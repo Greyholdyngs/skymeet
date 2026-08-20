@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Skymeet",
-  description: "Connect. Collaborate. Create.",
+  title: {
+    default: "SkyMeet",
+    template: "%s | SkyMeet",
+  },
+  description: "Meet. Connect. Collaborate.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body suppressHydrationWarning  className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }
