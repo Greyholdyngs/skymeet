@@ -26,17 +26,18 @@ const Navbar = () => {
         };
     }, []);
   return (
-    <nav className={`flex fixed left-1/2 justify-between items-center z-50 -translate-x-1/2 transition-all duration-300 w-full
-                    ${ scrolled ? "rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md w-[80vw]" : "rounded-none bg-transparent"
-                    } ${pageStyle.padding}`}>
+    <>
+    <nav className={`flex fixed left-1/2 justify-between items-center z-50 font-semibold -translate-x-1/2 transition-all duration-300 
+                    ${ scrolled ? `rounded-4xl border border-white/10 bg-black/80 backdrop-blur-md w-[80vw] px-5 py-1 top-5` : `rounded-none bg-transparent w-full ${pageStyle.padding}`
+                    } `}>
         <Link href="/">
           <img src="/images/logo.png" alt="SkyMeet" className="lg:w-[13.5vw] md:w-[14vw] w-[36vw]" />
         </Link>
       <ul className="space-x-5 hidden md:flex">
-        <li><Link href="/features">Features</Link></li>
-        <li><Link href="/pricing">Pricing</Link></li>
-        <li><Link href="/contact">Download</Link></li>
-        <li><Link href="/about">About</Link></li>
+        <li><Link href="#features">Features</Link></li>
+        <li><Link href="#pricing">Pricing</Link></li>
+        <li><Link href="#download">Download</Link></li>
+        <li><Link href="#about">About</Link></li>
       </ul>
       <span className="hidden md:flex space-x-5">
         <Button href="/login" buttonType="secondary">Login</Button>
@@ -47,7 +48,7 @@ const Navbar = () => {
         aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((prev) => !prev)}
-          className="relative z-50 flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white md:hidden">
+          className={`relative z-50 flex h-11 w-11 items-center justify-center rounded-xl border  text-white md:hidden ${ scrolled ? "border-none" : "border-white/10 bg-white/5"}`}>
          <span className="sr-only">
             {menuOpen ? "Close menu" : "Open menu"}
           </span>
@@ -67,8 +68,9 @@ const Navbar = () => {
             />
           </div>
       </button>
-      <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
     </nav>
+      <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+  </>
   )
 }
 
