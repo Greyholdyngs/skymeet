@@ -71,7 +71,7 @@ const Feature = () => {
         card.style.setProperty("--mouse-y", "50%");
     };
   return (
-    <section id="features" className="px-4 md:px-10">
+    <section id="features" className="px-4 md:px-10 scroll-mt-28">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-[#7C3AED]">

@@ -27,12 +27,14 @@ const Navbar = () => {
     }, []);
   return (
     <>
-    <nav className={`flex fixed left-1/2 justify-between items-center z-50 font-semibold -translate-x-1/2 transition-all duration-300 
+    <nav className={`flex fixed left-1/2 items-center z-50 font-semibold -translate-x-1/2 
+                    transition-all duration-300 ${ menuOpen ? "justify-end" : "justify-between " }
                     ${ scrolled ? `rounded-4xl border border-white/10 bg-black/80 backdrop-blur-md w-[80vw] px-5 py-1 top-5` : `rounded-none bg-transparent w-full ${pageStyle.padding}`
                     } `}>
-        <Link href="/">
-          <img src="/images/logo.png" alt="SkyMeet" className="lg:w-[13.5vw] md:w-[14vw] w-[36vw]" />
-        </Link>
+        {
+          menuOpen ? "" : <Link href="/"> <img src="/images/logo.png" alt="SkyMeet" className="lg:w-[13.5vw] md:w-[14vw] w-[36vw]" /></Link>
+        }
+        
       <ul className="space-x-5 hidden md:flex">
         <li><Link href="#features">Features</Link></li>
         <li><Link href="#pricing">Pricing</Link></li>

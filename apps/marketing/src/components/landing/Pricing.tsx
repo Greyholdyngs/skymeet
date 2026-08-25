@@ -40,7 +40,7 @@ const plans = [
 
 const Pricing = () => {
   return (
-    <section id="pricing" className="px-4 md:px-10 ">
+    <section id="pricing" className="px-4 md:px-10 scroll-mt-28">
       <div className="mx-auto max-w-7xl">
         <div className="text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#7C3AED]">

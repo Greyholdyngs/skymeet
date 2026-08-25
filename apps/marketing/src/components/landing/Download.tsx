@@ -3,7 +3,7 @@ import Button from "../Button";
 
 const Download = () => {
   return (
-    <section id="download" className="px-4 md:px-10">
+    <section id="download" className="px-4 md:px-10 scroll-mt-28">
       <div className="mx-auto max-w-7xl">
         <div className="relative overflow-hidden rounded-3xl border border-[#7C3AED]/20 bg-[#14141B] px-6 py-16 md:px-16">
           <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-[#7C3AED]/10 blur-3xl" />
