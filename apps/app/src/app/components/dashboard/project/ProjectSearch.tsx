@@ -35,7 +35,7 @@ const ProjectSearch = ({ onSearch }: ProjectSearchProps) => {
             </div>
             <button
                 type="button"
-                onClick={() => router.push("/projects/new")}
+                onClick={() => router.push("project/new")}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#7C3AED] px-5 py-3 text-sm 
                             font-semibold text-white transition hover:bg-[#6D28D9] active:scale-[0.98] sm:w-auto">
                 <Plus size={18} />

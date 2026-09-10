@@ -19,6 +19,7 @@ const projects: Project[] = [
     tasksCount: 18,
     createdAt: "2026-11-01",
     updatedAt: "today",
+    status: "active"
   },
   {
     id: "2",
@@ -30,6 +31,7 @@ const projects: Project[] = [
     tasksCount: 18,
     createdAt: "2026-08-01",
     updatedAt: "today",
+    status: "active"
   },
   {
     id: "3",
@@ -41,6 +43,7 @@ const projects: Project[] = [
     tasksCount: 18,
     createdAt: "2026-07-01",
     updatedAt: "yesterday",
+    status: "active"
   },
   {
     id: "4",
@@ -52,6 +55,7 @@ const projects: Project[] = [
     tasksCount: 18,
     createdAt: "2026-02-01",
     updatedAt: "today",
+    status: "active"
   }
 ];
 

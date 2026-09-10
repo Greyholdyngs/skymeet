@@ -8,4 +8,9 @@ export interface Project {
   tasksCount: number;
   createdAt: string;
   updatedAt: string;
+  status: "active" | "archived";
+}
+export interface CreateProjectData {
+  name: string;
+  description: string;
 }
