@@ -37,7 +37,6 @@ const DashboardPage = () => {
                 <p className="mt-2 text-sm text-white/40">Projects you are currently working on.</p>
               </section>
           </div>
-          
       </section>
     )
 }
