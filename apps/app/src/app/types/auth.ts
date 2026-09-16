@@ -1,10 +1,10 @@
-export interface User {
-    firstName: string;
-    lastName: string;
-    username: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
+export interface SignupFormData {
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
 }
 
 export interface LoginData {
@@ -17,6 +17,21 @@ export interface VerifyOTPData {
   otp: string;
 }
 
+export interface AuthUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  userName: string;
+  email: string;
+}
+
+export interface LoginResponse {
+  message: string;
+  accessToken: string;
+  user: AuthUser;
+}
+
 export interface Session {
-    authenticated: boolean;
+  authenticated: boolean;
+  user: AuthUser | null;
 }

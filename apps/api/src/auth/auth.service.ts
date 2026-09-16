@@ -91,7 +91,7 @@ export class AuthService {
             throw new BadRequestException( 'Invalid verification request');
         }
 
-        if (user.isEmailVerified) {
+        if (resendOtpDto.purpose === 'email_verification' && user.isEmailVerified ) {
             throw new BadRequestException('Email is already verified');
         }
 
@@ -117,7 +117,7 @@ export class AuthService {
         await this.otpService.createAndSendOtp(
             user._id,
             user.email,
-            'email_verification',
+            resendOtpDto.purpose,
         );
 
         return {
@@ -208,6 +208,22 @@ export class AuthService {
 
         return {
             message: 'Password reset successful',
+        };
+    }
+
+    async getCurrentUser(userId: string) {
+        const user = await this.userModel.findById(userId).select('-passwordHash');
+
+        if (!user) {
+            throw new UnauthorizedException('User no longer exists');
+        }
+
+        return {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            userName: user.userName,
+            email: user.email,
         };
     }
 }

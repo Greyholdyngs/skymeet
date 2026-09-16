@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import PasswordInput from "@/app/components/ui/PasswordInput";
+import { apiFetch } from "@/app/lib/api";
 
 const ResetPasswordPage = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(false)
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -16,9 +18,7 @@ const ResetPasswordPage = () => {
     confirmPassword: "",
   });
 
-  const handleSubmit = (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const newErrors = {
@@ -49,18 +49,47 @@ const ResetPasswordPage = () => {
       return;
     }
 
-    /*
-      Later:
-      Call your backend here.
+    const email = sessionStorage.getItem( "skymeet_reset_email",);
 
-      Example conceptually:
+    const otp = sessionStorage.getItem("skymeet_reset_otp");
 
-      await resetPassword({
-        password
+    if (!email || !otp) {
+      setErrors({
+        password: "",
+        confirmPassword:"Your password reset session has expired. Please request a new code.",
       });
-    */
+    return;
+    }
 
-    router.replace("/login");
+     try {
+      setLoading(true);
+
+      await apiFetch<{ message: string }>("/auth/reset-password",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email,
+            otp,
+            newPassword: password,
+            confirmPassword,
+          }),
+        },
+      );
+
+      sessionStorage.removeItem("skymeet_reset_email");
+      sessionStorage.removeItem("skymeet_reset_otp");
+
+      router.replace("/login");
+
+    } catch (error) {
+      setErrors({
+        password: "",
+        confirmPassword: error instanceof Error ? error.message : "Unable to reset your password. Please try again.",
+      });
+
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -111,7 +140,7 @@ const ResetPasswordPage = () => {
             type="submit"
             className="w-full rounded-2xl bg-[#7C3AED] py-3 font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:bg-[#6D28D9] active:scale-[0.98]"
           >
-            Reset Password
+           {loading ? "Resetting..." : "Reset Password"}
           </button>
         </form>
       </div>

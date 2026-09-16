@@ -5,10 +5,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
-import { User } from "@/app/types/auth";
+import { SignupFormData } from "@/app/types/auth";
 import Link from "next/link";
 
 import PasswordInput from "@/app/components/ui/PasswordInput";
+import { apiFetch } from "@/app/lib/api";
 
 const SignUpPage = () => {
   const router = useRouter();
@@ -24,7 +25,7 @@ const SignUpPage = () => {
   return () => clearTimeout(timer);
   }, []);
 
-  const [formData, setFormData] = useState<User>({
+  const [formData, setFormData] = useState<SignupFormData>({
         firstName: "",
         lastName: "",
         username: "",
@@ -44,7 +45,7 @@ const SignUpPage = () => {
   
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
 
         const validationErrors = {
@@ -78,12 +79,40 @@ const SignUpPage = () => {
         }
 
         if (Object.values(validationErrors).some((v) => !!v)) {
-            setError(validationErrors);
-            return;
+          setError(validationErrors);
+          return;
         }
 
-        router.push("/verify?purpose=signup");
-    }
+        try {
+          const response = await apiFetch<{ message: string; userId: string }>( "/auth/signup",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                userName: formData.username,
+                email: formData.email,
+                password: formData.password,
+                confirmPassword: formData.confirmPassword,
+              }),
+            },
+          );
+
+          console.log(response);
+
+          sessionStorage.setItem("skymeet_signup_email", formData.email);
+
+          router.push("/verify?purpose=signup");
+        } catch (error) {
+            setError({
+              ...validationErrors,
+              email:
+                error instanceof Error
+                  ? error.message
+                  : "Something went wrong. Please try again.",
+            });
+          }
+  }
 
   return (
     <section className={`flex flex-col justify-center items-center min-h-screen bg-[#050711] relative`}>
@@ -113,7 +142,7 @@ const SignUpPage = () => {
                 label="First Name"
                 type="text"
                 value={formData.firstName}
-                error={formData.firstName}
+                error={error.firstName}
                 placeholder="Joe"
                 onChange={(e) => { setError({ ...error, firstName: ""});
                                   setFormData({ ...formData, firstName: e.target.value});
@@ -123,10 +152,10 @@ const SignUpPage = () => {
             <div className={`flex flex-col space-y-2 transition-all duration-500 
                                     ${isExpanded ? "opacity-100 translate-y-0 delay-150" : "opacity-0 translate-y-3"}`}>
               <InputField 
-                label="Lasst Name"
+                label="Last Name"
                 type="text"
                 value={formData.lastName}
-                error={formData.lastName}
+                error={error.lastName}
                 placeholder="Pet"
                 onChange={(e) => { setError({ ...error, lastName: ""});
                                   setFormData({ ...formData, lastName: e.target.value});
@@ -138,6 +167,7 @@ const SignUpPage = () => {
                 label="Username"
                 type="text"
                 value={formData.username}
+                error={error.username}
                 placeholder="Joe"
                 onChange={(e) => { setError({ ...error, username: ""});
                                   setFormData({ ...formData, username: e.target.value});
@@ -149,6 +179,7 @@ const SignUpPage = () => {
               label="Email"
               type="email"
               value={formData.email}
+              error={error.email}
               placeholder="Joe"
               onChange={(e) => { setError({ ...error, email: ""});
                                 setFormData({ ...formData, email: e.target.value});

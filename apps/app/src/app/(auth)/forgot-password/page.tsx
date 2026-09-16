@@ -4,25 +4,48 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import InputField from "@/app/components/ui/InputField";
 
+import { apiFetch } from "@/app/lib/api";
+
 const ForgotPasswordPage = () => {
     const router = useRouter();
+    const [loading, setLoading] = useState(false)
 
     const [email, setEmail] = useState("");
     const [error, setError] = useState("");
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
 
+        const trimmedEmail = email.trim().toLowerCase();
+
         if (!email.trim()) {
-        setError("Please enter your email address.");
+            setError("Please enter your email address.");
         return;
         }
-        // Later:
-        // Call backend and send OTP
 
-        router.push("/verify?purpose=reset");
-    };
+        try {
+            setLoading(true);
+
+            await apiFetch<{ message: string }>("/auth/forgot-password", {
+                method: "POST",
+                body: JSON.stringify({
+                email: trimmedEmail,
+                }),
+            });
+
+            sessionStorage.setItem("skymeet_reset_email", trimmedEmail,);
+            router.push("/verify?purpose=reset");
+
+            } catch (error) {
+                setError(error instanceof Error ? error.message : "Unable to process your request. Please try again.",);
+                
+            } finally {
+                setLoading(false);
+            }
+
+            router.push("/verify?purpose=reset");
+        };
 
     return (
         <section className="flex min-h-screen items-center justify-center bg-[#050711] px-4">

@@ -2,10 +2,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { Eye, EyeOff } from "lucide-react";
 import InputField from "@/app/components/ui/InputField";
+import { LoginResponse } from "@/app/types/auth";
 
 import PasswordInput from "@/app/components/ui/PasswordInput";
+import { apiFetch } from "@/app/lib/api";
+
 const Login = () => {
     const router = useRouter();
     const [email, setEmail] = useState("");
@@ -17,16 +19,17 @@ const Login = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const [entered, setEntered] = useState(false);
+    const [loading, setLoading] = useState(false);
     
-      useEffect(() => {
+    useEffect(() => {
         const timer = setTimeout(() => {
           setEntered(true);
       }, 300);
     
       return () => clearTimeout(timer);
-      }, []);
+    }, []);
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         setError("");
@@ -39,9 +42,26 @@ const Login = () => {
             setError("Please add your password");
             return;
         } 
+        
+        try {
+          setLoading(true);
 
+          const response = await apiFetch<LoginResponse>("/auth/login", {
+              method: "POST",
+              body: JSON.stringify({
+                  email,
+                  password,
+              }),
+          });
 
-        router.replace("/dashboard");
+          router.replace("/dashboard");
+
+        } catch (error) {
+            setError( error instanceof Error ? error.message : "Unable to log in. Please try again.",
+        );
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
@@ -72,7 +92,6 @@ const Login = () => {
               label="Email"
               type="email"
               value={email}
-              error={error}
               placeholder="Joe"
               onChange={(e) => setEmail(e.target.value)}/>
             </div>

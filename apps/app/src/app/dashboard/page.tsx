@@ -4,12 +4,14 @@ import { Calendar, FolderKanban, Users, Video } from "lucide-react";
 
 import StatCard from "../components/dashboard/homepage/StatCard";
 import WelcomeBanner from "../components/dashboard/homepage/WelcomeBanner";
+import AuthGuard from "../components/auth/AuthGuard";
 
 const DashboardPage = () => {
-    const isNewUser = false;
+    const isNewUser = true;
 
     return (
-      <section >
+      <AuthGuard>
+        <section >
           <div className="mx-auto max-w-7xl space-y-8 px-6 py-8 md:px-10">
               <WelcomeBanner name="Emmanuel" isNewUser={isNewUser} />
               {
@@ -37,7 +39,9 @@ const DashboardPage = () => {
                 <p className="mt-2 text-sm text-white/40">Projects you are currently working on.</p>
               </section>
           </div>
-      </section>
+        </section>
+      </AuthGuard>
+      
     )
 }
 
