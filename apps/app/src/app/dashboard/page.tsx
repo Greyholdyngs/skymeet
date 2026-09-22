@@ -1,6 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation";
 import { Calendar, FolderKanban, Users, Video } from "lucide-react";
+import { apiFetch } from "../lib/api";
 
 import StatCard from "../components/dashboard/homepage/StatCard";
 import WelcomeBanner from "../components/dashboard/homepage/WelcomeBanner";

@@ -25,7 +25,7 @@ const sidebarContent = [
     {
         label: "Project",
         icon: FolderKanban,
-        href: "/dashboard/project",
+        href: "/dashboard/projects",
     },
     {
         label: "People",

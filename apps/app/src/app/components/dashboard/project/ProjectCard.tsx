@@ -26,7 +26,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
                 <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-white/40">{project.description || "No project description yet."}</p>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-white/5 pt-4 text-xs text-white/40">
-                <span>{project.tasksCount} tasks</span>
+                <span>tasks</span>
                 <span className="flex items-center gap-1.5">
                     <Users size={14} />
                     {project.membersCount} members

@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Loader2 } from "lucide-react";
 
 import InputField from "@/app/components/ui/InputField";
 import type { CreateProjectData } from "@/app/types/project";
+import { apiFetch } from "@/app/lib/api";
 
 const CreateProjectForm = () => {
     const router = useRouter();
@@ -85,10 +86,28 @@ const CreateProjectForm = () => {
         }
 
         setCreating(true);
-        await new Promise((resolve) => setTimeout(resolve, 700));
+
+        try {
+            await apiFetch("/projects", {
+                method: "POST",
+                body: JSON.stringify({
+                    name: formData.name.trim(),
+                    description: formData.description.trim()
+                })
+            })
+
+            router.push("/dashboard/projects");
+
+        } catch(error) {
+            setError((prev) => ({
+                ...prev,
+                name: error instanceof Error ? error.message : "Unable to create project"
+            }))
+
+        } finally {
+            setCreating(false);
+        }
         
-        router.push("/projects");
-        setCreating(false);
     };
 
     return (
