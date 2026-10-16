@@ -7,18 +7,29 @@ import StatCard from "../components/dashboard/homepage/StatCard";
 import WelcomeBanner from "../components/dashboard/homepage/WelcomeBanner";
 import AuthGuard from "../components/auth/AuthGuard";
 
+import { InviteProjectOption } from "../components/dashboard/project/members/types";
+import { useState } from "react";
+
 const DashboardPage = () => {
     const isNewUser = true;
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [projects, setProjects] = useState<InviteProjectOption[]>([]);
 
     return (
       <AuthGuard>
         <section >
           <div className="mx-auto max-w-7xl space-y-8 px-6 py-8 md:px-10">
-              <WelcomeBanner name="Emmanuel" isNewUser={isNewUser} />
+              <WelcomeBanner 
+                name="Emmanuel" 
+                isNewUser={isNewUser}
+                onCreateProject={() => {}}
+                onInvitePeople={() => setIsInviteOpen(true)}
+                onStartMeeting={() => {}}
+                onScheduleMeeting={() => {}} />
               {
                 !isNewUser && (
                   <div  className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <StatCard title="Total Projects" value={12} icon={FolderKanban} />
+                    <StatCard title="Total Projects" value={1} icon={FolderKanban} />
                     <StatCard title="Total Meetings" value={5} icon={Video} />
                     <StatCard title="Total Users" value={20} icon={Users} />
                     <StatCard title="Upcoming Meetings" value={3} icon={Calendar} />

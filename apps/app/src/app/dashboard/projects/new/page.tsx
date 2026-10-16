@@ -1,4 +1,5 @@
 import CreateProjectForm from "@/app/components/dashboard/project/CreateProjectForm";
+import type { Project } from "@/app/types/project";
 
 const NewProjectPage = () => {
   return (

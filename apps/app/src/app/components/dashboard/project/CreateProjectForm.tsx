@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
 
 import InputField from "@/app/components/ui/InputField";
-import type { CreateProjectData } from "@/app/types/project";
+import type { CreateProjectData, Project } from "@/app/types/project";
 import { apiFetch } from "@/app/lib/api";
+
 
 const CreateProjectForm = () => {
     const router = useRouter();
@@ -88,15 +89,15 @@ const CreateProjectForm = () => {
         setCreating(true);
 
         try {
-            await apiFetch("/projects", {
+            const createdProject = await apiFetch<Project>("/projects", {
                 method: "POST",
                 body: JSON.stringify({
                     name: formData.name.trim(),
-                    description: formData.description.trim()
-                })
-            })
+                    description: formData.description.trim(),
+                }),
+            });
 
-            router.push("/dashboard/projects");
+            router.push(`/dashboard/projects/${createdProject._id}`);
 
         } catch(error) {
             setError((prev) => ({

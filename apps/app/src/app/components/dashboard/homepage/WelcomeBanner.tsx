@@ -4,11 +4,15 @@ import { useState } from "react";
 import { ArrowRight, Plus, UserPlus } from "lucide-react";
 
 interface WelcomeBannerProps {
-  name: string;
-  isNewUser?: boolean;
+    name: string;
+    isNewUser?: boolean;
+    onCreateProject: () => void;
+    onInvitePeople: () => void;
+    onStartMeeting: () => void;
+    onScheduleMeeting: () => void; 
 }
 
-const WelcomeBanner = ({ name, isNewUser = false }: WelcomeBannerProps) => {
+const WelcomeBanner = ({ name, isNewUser = false, onCreateProject, onInvitePeople, onStartMeeting, onScheduleMeeting }: WelcomeBannerProps) => {
     const [dismissed, setDismissed] = useState(false);
     if (dismissed) return null;
 
@@ -34,11 +38,17 @@ const WelcomeBanner = ({ name, isNewUser = false }: WelcomeBannerProps) => {
                     {
                         isNewUser ? (
                             <>
-                                <button className="flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 font-semibold text-white transition hover:bg-[#6D28D9]">
+                                <button
+                                    type="button" 
+                                    onClick={onCreateProject}
+                                     className="flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 font-semibold text-white transition hover:bg-[#6D28D9]">
                                     <Plus size={18} />
                                     Create Project
                                 </button>
-                                <button className="flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-white/70 transition hover:bg-white/5">
+                                <button 
+                                    type="button" 
+                                    onClick={onInvitePeople}
+                                    className="flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-white/70 transition hover:bg-white/5">
                                     <UserPlus size={18} />
                                     Invite People
                                 </button>
@@ -47,7 +57,7 @@ const WelcomeBanner = ({ name, isNewUser = false }: WelcomeBannerProps) => {
                         <>
                             <button className="flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 font-semibold text-white">
                                 <Plus size={18} />
-                                Start Meeting
+                                Start Meet
                             </button>
                             <button className="flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-white/70">
                                 Schedule

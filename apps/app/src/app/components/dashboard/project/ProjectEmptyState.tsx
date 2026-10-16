@@ -15,7 +15,7 @@ const ProjectEmptyState = () => {
             <p className="mt-3 max-w-md text-sm leading-6 text-white/40">You don't have any projects yet. Create your first project and start organizing your work with your team.</p>
             <button
                 type="button"
-                onClick={() => router.push("/projects/new")}
+                onClick={() => router.push("projects/new")}
                 className="mt-7 flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-semibold text-white 
                             transition hover:bg-[#6D28D9] active:scale-[0.98]"
             >
