@@ -9,7 +9,7 @@ const ProjectList = ({ projects }: ProjectListProps) => {
     return (
         <div className="flex flex-col space-y-3">
             {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard key={project._id} project={project} />
             ))}
         </div>
     )
