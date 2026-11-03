@@ -8,6 +8,13 @@ import { AuthModule } from './auth/auth.module.js';
 
 import { ProjectsModule } from './projects/projects.module.js';
 import { ProjectMembersModule } from './project-members/project-members.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
+
+import { TasksModule } from './tasks/tasks.module.js';
+import { ActivityModule } from './activity/activity.module.js';
+import { InvitationsModule } from './invitations/invitation.module.js';
+
+import { SprintsModule } from './sprints/sprint.module.js';
 
 @Module({
   imports: [
@@ -18,6 +25,11 @@ import { ProjectMembersModule } from './project-members/project-members.module.j
     AuthModule,
     ProjectsModule,
     ProjectMembersModule,
+    DashboardModule,
+    TasksModule,
+    ActivityModule,
+    InvitationsModule,
+    SprintsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

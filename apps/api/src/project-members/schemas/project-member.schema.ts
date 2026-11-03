@@ -1,7 +1,16 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
-export type ProjectMemberDocument = HydratedDocument<ProjectMember>;
+export enum ProjectMemberRole {
+    OWNER = 'owner',
+    ADMIN = 'admin',
+    TEAM_MEMBER = 'team_member',
+}
+
+export type ProjectMemberDocument = HydratedDocument<ProjectMember> & {
+    createdAt: Date;
+    updatedAt: Date;
+};
 
 @Schema({ timestamps: true })
 export class ProjectMember {
@@ -21,19 +30,18 @@ export class ProjectMember {
 
     @Prop({
         type: String,
-        enum: ['owner', 'member'],
-        default: 'member',
+        enum: Object.values(ProjectMemberRole),
+        default: ProjectMemberRole.TEAM_MEMBER,
         required: true,
     })
-    role: 'owner' | 'member';
+    role: ProjectMemberRole;
 }
 
 export const ProjectMemberSchema = SchemaFactory.createForClass(ProjectMember);
 
 ProjectMemberSchema.index(
     {
-        projectId: 1,
-        userId: 1,
+        projectId: 1, userId: 1,
     },
     {
         unique: true,

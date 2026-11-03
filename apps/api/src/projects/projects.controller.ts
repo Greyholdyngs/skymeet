@@ -8,6 +8,7 @@ import type { AuthRequest } from '../auth/types/auth-request.js';
 
 import { UpdateProjectDto } from './dto/update.project.dto.js';
 import { ProjectMembersService } from '../project-members/project-members.service.js';
+import { ProjectDocument } from './schema/project.schema.js';
 
 @Controller('projects')
 @UseGuards(JwtAuthGuard)
@@ -32,29 +33,23 @@ export class ProjectsController {
     }
 
     @Get()
-    async getProjects( @Req() request: AuthRequest ) {
-        const ownerId = new Types.ObjectId(request.user.sub);
-
-        return this.projectsService.findByOwner(ownerId);
+    async getProjects(@Req() request: AuthRequest) {
+        const userId = new Types.ObjectId(request.user.sub);
+        return this.projectsService.findAccessibleToUser(userId);
     }
 
     @Get(':id')
     async getProject( @Param('id') id: string, @Req() request: AuthRequest ) {
-        const ownerId = new Types.ObjectId(request.user.sub);
-
         if (!Types.ObjectId.isValid(id)) {
             throw new NotFoundException('Project not found');
         }
 
-        const project = await this.projectsService.findById(
-            new Types.ObjectId(id),
-            ownerId,
-        );
+        const userId = new Types.ObjectId(request.user.sub);
+        const project = await this.projectsService.findAccessibleById(new Types.ObjectId(id), userId );
 
         if (!project) {
             throw new NotFoundException('Project not found');
         }
-
         return project;
     }
 
@@ -78,7 +73,7 @@ export class ProjectsController {
 
         return project;
     }
-
+    
     @Delete(':id')
     async deleteProject( @Param('id') id: string, @Req() request: AuthRequest ) {
         const ownerId = new Types.ObjectId(request.user.sub);
@@ -87,17 +82,13 @@ export class ProjectsController {
             throw new NotFoundException('Project not found');
         }
 
-        const project = await this.projectsService.delete(
-            new Types.ObjectId(id),
-            ownerId,
-        );
+        const project = await this.projectsService.delete( new Types.ObjectId(id), ownerId );
 
         if (!project) {
             throw new NotFoundException('Project not found');
         }
 
-        return {
-            message: 'Project deleted successfully',
-        };
+        return { message: 'Project deleted successfully' };
     }
+
 }

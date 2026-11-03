@@ -1,0 +1,16 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Activity, ActivitySchema } from './schemas/activity.schema.js';
+
+import { ActivityService } from './activity.service.js';
+
+@Module({
+    imports: [
+        MongooseModule.forFeature([
+            { name: Activity.name, schema: ActivitySchema },
+        ]),
+    ],
+    providers: [ActivityService],
+    exports: [ActivityService],
+})
+export class ActivityModule {}

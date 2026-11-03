@@ -8,11 +8,13 @@ import { AuthModule } from '../auth/auth.module.js';
 
 import { ProjectMembersModule } from '../project-members/project-members.module.js';
 import { ProjectMember, ProjectMemberSchema } from '../project-members/schemas/project-member.schema.js';
+import { ActivityModule } from '../activity/activity.module.js';
 
 @Module({
     imports: [
         AuthModule,
         ProjectMembersModule,
+        ActivityModule,
         
         MongooseModule.forFeature([
             {
