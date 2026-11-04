@@ -207,9 +207,7 @@ export class CommentsService {
 
         await comment.save();
 
-        return {
-            message: 'Comment deleted successfully',
-        };
+        return this.populateAuthor(comment._id);
     }
 
     async validateDiscussionTask( projectId: string, taskId: string ): Promise<boolean> {
