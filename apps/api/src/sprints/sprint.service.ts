@@ -8,12 +8,17 @@ import { ProjectMembersService } from '../project-members/project-members.servic
 
 import { ProjectMemberRole } from '../project-members/schemas/project-member.schema.js';
 import { UpdateSprintDto } from './dto/update-sprint.dto.js';
+import { Task, TaskDocument } from '../tasks/schema/task.schema.js';
+
 
 @Injectable()
 export class SprintsService {
     constructor(
         @InjectModel(Sprint.name)
         private readonly sprintModel: Model<SprintDocument>,
+
+        @InjectModel(Task.name)
+        private readonly taskModel: Model<TaskDocument>,
 
         private readonly projectMembersService: ProjectMembersService,
     ) {}
@@ -134,6 +139,66 @@ export class SprintsService {
         return {
             message: 'Sprint updated successfully.',
             sprint,
+        };
+    }
+
+    async deleteSprint( projectId: string, sprintId: string, userId: string ) {
+        if ( !Types.ObjectId.isValid(projectId) || !Types.ObjectId.isValid(sprintId) || !Types.ObjectId.isValid(userId) ) {
+            throw new NotFoundException('Sprint not found.');
+        }
+
+        const projectObjectId = new Types.ObjectId(projectId);
+        const sprintObjectId = new Types.ObjectId(sprintId);
+        const userObjectId = new Types.ObjectId(userId);
+
+        const role = await this.projectMembersService.getRoleInProject( projectObjectId, userObjectId );
+
+        if (!role) {
+            throw new NotFoundException('Sprint not found.');
+        }
+
+        if ( role !== ProjectMemberRole.OWNER && role !== ProjectMemberRole.ADMIN ) {
+            throw new ForbiddenException( 'You do not have permission to delete sprints.' );
+        }
+
+        const session = await this.sprintModel.db.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                const sprint = await this.sprintModel.findOne({
+                    _id: sprintObjectId,
+                    projectId: projectObjectId,
+                }).session(session);
+
+                if (!sprint) {
+                    throw new NotFoundException('Sprint not found.');
+                }
+
+                await this.taskModel.updateMany(
+                    {
+                        projectId: projectObjectId,
+                        sprintId: sprintObjectId,
+                    },
+                    {
+                        $set: { sprintId: null },
+                    },
+                    { session },
+                );
+
+                await this.sprintModel.deleteOne(
+                    {
+                        _id: sprintObjectId,
+                        projectId: projectObjectId,
+                    },
+                    { session },
+                );
+            });
+        } finally {
+            await session.endSession();
+        }
+
+        return {
+            message: 'Sprint deleted successfully.',
         };
     }
 }

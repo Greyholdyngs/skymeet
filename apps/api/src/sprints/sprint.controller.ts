@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Param, Req, UseGuards, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Post, Param, Req, UseGuards, Patch, Delete } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
@@ -45,6 +45,16 @@ export class SprintsController {
             sprintId,
             request.user.sub,
             dto,
+        );
+    }
+
+    @Delete(':sprintId')
+    async deleteSprint( @Param('projectId') projectId: string, @Param('sprintId') sprintId: string,
+                        @Req() req: AuthenticatedRequest ) {
+        return this.sprintsService.deleteSprint(
+            projectId,
+            sprintId,
+            req.user.sub,
         );
     }
 }

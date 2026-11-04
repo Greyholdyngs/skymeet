@@ -15,6 +15,7 @@ import { ActivityModule } from './activity/activity.module.js';
 import { InvitationsModule } from './invitations/invitation.module.js';
 
 import { SprintsModule } from './sprints/sprint.module.js';
+import { CommentsModule } from './comments/comment.module.js';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SprintsModule } from './sprints/sprint.module.js';
     ActivityModule,
     InvitationsModule,
     SprintsModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
