@@ -237,6 +237,9 @@ importers:
       '@nestjs/websockets':
         specifier: ^12.0.1
         version: 12.0.1(@nestjs/common@12.0.1(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@12.0.1)(@nestjs/platform-socket.io@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@skymeet/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
@@ -319,6 +322,9 @@ importers:
 
   apps/app:
     dependencies:
+      '@skymeet/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       lucide-react:
         specifier: ^1.33.0
         version: 1.33.0(react@19.2.8)
@@ -401,6 +407,12 @@ importers:
         version: 4.3.3
       typescript:
         specifier: ^5
+        version: 5.9.3
+
+  packages/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
         version: 5.9.3
 
 packages:

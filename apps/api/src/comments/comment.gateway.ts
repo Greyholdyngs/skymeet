@@ -8,6 +8,10 @@ import { CommentsService } from './comment.service.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 
 import { ProjectMembersService } from '../project-members/project-members.service.js';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+
+import { UpdateCommentDto } from './dto/update-comment.dto.js';
 
 interface AuthenticatedSocket extends Socket {
     data: { userId: string; };
@@ -20,13 +24,24 @@ interface DiscussionPayload {
 
 interface CreateCommentPayload extends DiscussionPayload {
     parentCommentId?: string | null;
-    content: string;
+    ciphertext: string;
 }
 
 interface SocketAck {
     success: boolean;
     data?: unknown;
     error?: string;
+}
+
+interface UpdateCommentPayload {
+    projectId: string;
+    commentId: string;
+    ciphertext: string;
+}
+
+interface DeleteCommentPayload {
+    projectId: string;
+    commentId: string;
 }
 
 @WebSocketGateway({
@@ -87,6 +102,14 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
     @SubscribeMessage('discussion:join')
     async handleJoinDiscussion( @ConnectedSocket() client: AuthenticatedSocket, @MessageBody() payload: DiscussionPayload,
                                 @Ack() ack: (response: SocketAck) => void ): Promise<void> {
+
+        console.log('DISCUSSION JOIN PAYLOAD:', payload);
+        console.log('PROJECT ID:', payload?.projectId);
+        console.log('PROJECT ID TYPE:', typeof payload?.projectId);
+        console.log(
+            'IS VALID OBJECT ID:',
+            Types.ObjectId.isValid(payload?.projectId),
+        );
         try {
             if (!Types.ObjectId.isValid(payload?.projectId)) {
                 ack({ success: false, error: 'Invalid project ID' });
@@ -155,19 +178,23 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
                 return;
             }
 
-            const room = this.getDiscussionRoom( payload.projectId, payload.taskId);
-            const joinedRooms = client.rooms;
-
-            if (!joinedRooms.has(room)) {
-                ack({ success: false, error: 'Join the discussion before commenting' });
+            if ( payload.taskId && !Types.ObjectId.isValid(payload.taskId) ) {
+                ack({ success: false, error: 'Invalid task ID' });
                 return;
             }
 
-            const dto: CreateCommentDto = {
+            const dto = plainToInstance(CreateCommentDto, {
                 taskId: payload.taskId,
                 parentCommentId: payload.parentCommentId,
-                content: payload.content,
-            };
+                ciphertext: payload.ciphertext,
+            });
+
+            const errors = await validate(dto);
+
+            if (errors.length > 0) {
+                ack({ success: false, error: 'Invalid comment payload' });
+                return;
+            }
 
             const comment = await this.commentsService.createComment(
                 payload.projectId,
@@ -175,6 +202,7 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
                 dto,
             );
 
+            const room = this.getDiscussionRoom( payload.projectId, payload.taskId );
             this.server.to(room).emit('comment:new', comment);
 
             ack({ success: true, data: comment });
@@ -185,4 +213,88 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
             });
         }
     }
+
+    @SubscribeMessage('comment:update')
+    async handleUpdateComment( @ConnectedSocket() client: AuthenticatedSocket, @MessageBody() payload: UpdateCommentPayload,
+                                @Ack() ack: (response: SocketAck) => void ): Promise<void> {
+        try {
+            if (!Types.ObjectId.isValid(payload?.projectId)) {
+                ack({ success: false, error: 'Invalid project ID' });
+                return;
+            }
+
+            if (!Types.ObjectId.isValid(payload?.commentId)) {
+                ack({ success: false, error: 'Invalid comment ID' });
+                return;
+            }
+
+            const dto = plainToInstance(UpdateCommentDto, { ciphertext: payload.ciphertext });
+            const errors = await validate(dto);
+
+            if (errors.length > 0) {
+                ack({ success: false, error: 'Invalid encrypted comment payload' });
+                return;
+            }
+
+            const comment = await this.commentsService.updateComment(
+                payload.projectId,
+                payload.commentId,
+                client.data.userId,
+                dto,
+            );
+
+            if (!comment) {
+                ack({ success: false, error: 'Comment not found' });
+                return;
+            }
+
+            const room = this.getDiscussionRoom( payload.projectId, comment.taskId?.toString() );
+            this.server.to(room).emit('comment:updated', comment);
+
+            ack({ success: true, data: comment });
+        } catch (error) {
+            ack({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unable to update comment',
+            });
+        }
+    }
+
+    @SubscribeMessage('comment:delete')
+    async handleDeleteComment( @ConnectedSocket() client: AuthenticatedSocket, @MessageBody() payload: DeleteCommentPayload,
+                             @Ack() ack: (response: SocketAck) => void ): Promise<void> {
+        try {
+            if (!Types.ObjectId.isValid(payload?.projectId)) {
+                ack({ success: false, error: 'Invalid project ID' });
+                return;
+            }
+
+            if (!Types.ObjectId.isValid(payload?.commentId)) {
+                ack({ success: false, error: 'Invalid comment ID' });
+                return;
+            }
+
+            const comment = await this.commentsService.deleteComment(
+                payload.projectId,
+                payload.commentId,
+                client.data.userId,
+            );
+
+            if (!comment) {
+                ack({ success: false, error: 'Comment not found' });
+                return;
+            }
+
+            const room = this.getDiscussionRoom( payload.projectId, comment.taskId?.toString() );
+            this.server.to(room).emit('comment:deleted', comment);
+
+            ack({ success: true, data: comment });
+        } catch (error) {
+            ack({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unable to delete comment',
+            });
+        }
+    }
+
 }
