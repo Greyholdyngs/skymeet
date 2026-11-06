@@ -24,7 +24,7 @@ interface DiscussionPayload {
 
 interface CreateCommentPayload extends DiscussionPayload {
     parentCommentId?: string | null;
-    content: string;
+    ciphertext: string;
 }
 
 interface SocketAck {
@@ -36,7 +36,7 @@ interface SocketAck {
 interface UpdateCommentPayload {
     projectId: string;
     commentId: string;
-    content: string;
+    ciphertext: string;
 }
 
 interface DeleteCommentPayload {
@@ -186,7 +186,7 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
             const dto = plainToInstance(CreateCommentDto, {
                 taskId: payload.taskId,
                 parentCommentId: payload.parentCommentId,
-                content: payload.content,
+                ciphertext: payload.ciphertext,
             });
 
             const errors = await validate(dto);
@@ -228,11 +228,11 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
                 return;
             }
 
-            const dto = plainToInstance(UpdateCommentDto, { content: payload.content });
+            const dto = plainToInstance(UpdateCommentDto, { ciphertext: payload.ciphertext });
             const errors = await validate(dto);
 
             if (errors.length > 0) {
-                ack({ success: false, error: 'Invalid comment content' });
+                ack({ success: false, error: 'Invalid encrypted comment payload' });
                 return;
             }
 

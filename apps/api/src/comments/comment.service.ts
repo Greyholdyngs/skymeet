@@ -87,7 +87,7 @@ export class CommentsService {
             taskId: taskObjectId,
             authorId: authorObjectId,
             parentCommentId,
-            content: dto.content,
+            ciphertext: dto.ciphertext,
         });
 
         return this.populateAuthor(comment._id);
@@ -131,10 +131,7 @@ export class CommentsService {
 
         const data = comments.map((comment) => ({
             ...comment.toObject(),
-            content: comment.deletedAt ? 'This comment was deleted' : comment.content,
-            replies: ( repliesByParent.get(comment._id.toString()) ?? []).map((reply) => ({
-                ...reply.toObject(),
-                content: reply.deletedAt ? 'This comment was deleted' : reply.content, })),
+            replies: (repliesByParent.get(comment._id.toString()) ?? []).map((reply) => reply.toObject() ),
         }));
 
         return {
@@ -172,7 +169,7 @@ export class CommentsService {
             throw new BadRequestException( 'Deleted comments cannot be edited' );
         }
 
-        comment.content = dto.content;
+        comment.ciphertext = dto.ciphertext;
         comment.editedAt = new Date();
 
         await comment.save();
@@ -202,7 +199,7 @@ export class CommentsService {
             throw new BadRequestException( 'Comment has already been deleted' );
         }
 
-        comment.content = 'This comment was deleted';
+        comment.deletedAt = new Date();
         comment.deletedAt = new Date();
 
         await comment.save();

@@ -40,11 +40,10 @@ export class Comment {
     parentCommentId: Types.ObjectId | null;
 
     @Prop({
+        type: String,
         required: true,
-        trim: true,
-        maxlength: 5000,
     })
-    content: string;
+    ciphertext: string;
 
     @Prop({
         type: Date,

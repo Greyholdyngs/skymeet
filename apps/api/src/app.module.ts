@@ -16,6 +16,9 @@ import { InvitationsModule } from './invitations/invitation.module.js';
 
 import { SprintsModule } from './sprints/sprint.module.js';
 import { CommentsModule } from './comments/comment.module.js';
+import { MlsModule } from './mls/mls.module.js';
+
+import { DevicesModule } from './devices/device.module.js';
 
 @Module({
   imports: [
@@ -32,6 +35,8 @@ import { CommentsModule } from './comments/comment.module.js';
     InvitationsModule,
     SprintsModule,
     CommentsModule,
+    MlsModule,
+    DevicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
