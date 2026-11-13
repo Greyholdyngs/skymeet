@@ -19,12 +19,23 @@ import { CommentsModule } from './comments/comment.module.js';
 import { MlsModule } from './mls/mls.module.js';
 
 import { DevicesModule } from './devices/device.module.js';
+import { MeetingModule } from './meetings/meeting.module.js';
+import { UsersModule } from './users/users.module.js';
+
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
     DatabaseModule,
     AuthModule,
     ProjectsModule,
@@ -37,8 +48,12 @@ import { DevicesModule } from './devices/device.module.js';
     CommentsModule,
     MlsModule,
     DevicesModule,
+    MeetingModule,
+    UsersModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService, { provide: APP_GUARD, useClass: ThrottlerGuard,},
+  ],
 })
 export class AppModule {}

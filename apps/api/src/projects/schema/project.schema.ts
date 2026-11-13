@@ -20,6 +20,12 @@ export class Project {
         required: true,
     })
     ownerId: Types.ObjectId;
+
+    @Prop({
+        type: Boolean,
+        default: null,
+    })
+    showChatHistoryToNewMembers: boolean | null;
 }
 
 export const ProjectSchema = SchemaFactory.createForClass(Project);

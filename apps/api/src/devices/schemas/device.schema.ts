@@ -11,10 +11,10 @@ export class Device {
     @Prop({
         type: MongooseSchema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        default: null,
         index: true,
     })
-    userId: Types.ObjectId;
+    userId: Types.ObjectId | null;
 
     @Prop({
         required: true,

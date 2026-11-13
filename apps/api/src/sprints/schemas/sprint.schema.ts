@@ -56,12 +56,12 @@ export class Sprint {
     })
     status: SprintStatus;
 
-    @Prop({
+   @Prop({
         type: Types.ObjectId,
         ref: 'User',
-        required: true,
+        default: null,
     })
-    createdBy: Types.ObjectId;
+    createdBy: Types.ObjectId | null;
 }
 
 export const SprintSchema = SchemaFactory.createForClass(Sprint);

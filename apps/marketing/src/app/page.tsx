@@ -18,7 +18,7 @@ export default function Home() {
   return (
     <div className="bg-[#050711] min-h-screen">
       <SkyMeetLoader />
-        <Navbar />
+      <Navbar />
       <main className={` space-y-20`}>
         <Hero />
         <Feature />

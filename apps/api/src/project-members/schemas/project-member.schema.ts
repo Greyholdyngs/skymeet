@@ -35,6 +35,13 @@ export class ProjectMember {
         required: true,
     })
     role: ProjectMemberRole;
+
+    @Prop({
+        type: Boolean,
+        default: true,
+        required: true,
+    })
+    canViewHistoricalChat: boolean;
 }
 
 export const ProjectMemberSchema = SchemaFactory.createForClass(ProjectMember);

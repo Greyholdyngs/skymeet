@@ -1,6 +1,7 @@
 export enum ActivityEntityType {
     PROJECT = 'project',
     TASK = 'task',
+    SPRINT = 'sprint',
 }
 
 export enum ActivityAction {
@@ -13,4 +14,7 @@ export enum ActivityAction {
     PROJECT_CREATED = 'project_created',
     PROJECT_UPDATED = 'project_updated',
     PROJECT_DELETED = 'project_deleted',
+    SPRINT_CREATED = 'sprint_created',
+    SPRINT_UPDATED = 'sprint_updated',
+    SPRINT_DELETED = 'sprint_deleted',
 }

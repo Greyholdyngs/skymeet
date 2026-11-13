@@ -12,6 +12,7 @@ import { INVITATION_EXPIRY_MS } from './invitations.constant.js';
 
 import { User, UserDocument } from '../auth/schemas/user.schema.js';
 import { Project, ProjectDocument } from '../projects/schema/project.schema.js';
+import { NotificationService } from '../notifications/notification.service.js';
 
 @Injectable()
 export class InvitationsService {
@@ -21,6 +22,7 @@ export class InvitationsService {
 
         private readonly projectMembersService: ProjectMembersService,
         private readonly emailService: EmailService,
+        private readonly notificationService: NotificationService,
 
         @InjectModel(User.name)
         private readonly userModel: Model<UserDocument>,
@@ -150,6 +152,20 @@ export class InvitationsService {
             throw new BadRequestException('The invitation email could not be sent. Please try again.' );
         }
 
+        if (invitedUser) {
+            try {
+                await this.notificationService.create({
+                    recipientId: invitedUser._id,
+                    actorId: inviterObjectId,
+                    type: 'project_invitation',
+                    title: 'Project invitation',
+                    message: 'You have been invited to join a project on SkyMeet',
+                    resourceType: 'project',
+                    resourceId: projectObjectId,
+                });
+            } catch (error) {}
+        }
+
         return {
             message: 'Invitation sent successfully',
             invitation: {
@@ -205,7 +221,7 @@ export class InvitationsService {
                     respondedAt: new Date(),
                 },
             },
-            { new: true },
+            { returnDocument: 'after' },
         ).exec();
 
         if (!claimedInvitation) {
@@ -284,12 +300,9 @@ export class InvitationsService {
                 email: normalizedEmail,
                 expiresAt: { $gt: now },
             },
-            {
-                $set: { status: InvitationStatus.DECLINED, respondedAt: now, },
-            },
-            {
-                new: true,
-            },).exec();
+            { $set: { status: InvitationStatus.DECLINED, respondedAt: now, },},
+            { returnDocument: 'after' },
+            ).exec();
 
         if (!declinedInvitation) {
             throw new ConflictException( 'This invitation has already been responded to or has expired.' );

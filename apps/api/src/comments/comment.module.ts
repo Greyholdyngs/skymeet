@@ -10,10 +10,13 @@ import { CommentsGateway } from './comment.gateway.js';
 import { Task, TaskSchema } from '../tasks/schema/task.schema.js';
 import { CommentsController } from './comment.controller.js';
 
+import { NotificationsModule } from '../notifications/notification.module.js';
+
 @Module({
     imports: [
         AuthModule,
         ProjectMembersModule,
+        NotificationsModule,
         MongooseModule.forFeature([
             {
                 name: Comment.name,

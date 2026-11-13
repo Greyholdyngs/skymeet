@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Req, UseGuards,Delete } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
@@ -30,5 +30,32 @@ export class ProjectMembersController {
         }
 
         return this.projectMembersService.findByProject( projectObjectId );
+    }
+
+    @Delete('me')
+    async leaveProject( @Param('projectId') projectId: string, @Req() request: AuthRequest, ) {
+        if (!Types.ObjectId.isValid(projectId)) {
+            throw new NotFoundException('Project not found');
+        }
+
+        return this.projectMembersService.leaveProject(
+            new Types.ObjectId(projectId),
+            new Types.ObjectId(request.user.sub),
+        );
+    }
+
+    @Delete(':memberUserId')
+    async removeMember( @Param('projectId') projectId: string, @Param('memberUserId') memberUserId: string,
+                        @Req() request: AuthRequest, ) {
+                            
+        if ( !Types.ObjectId.isValid(projectId) || !Types.ObjectId.isValid(memberUserId) ) {
+            throw new NotFoundException('Project or member not found');
+        }
+
+        return this.projectMembersService.removeMember(
+            new Types.ObjectId(projectId),
+            new Types.ObjectId(request.user.sub),
+            new Types.ObjectId(memberUserId),
+        );
     }
 }

@@ -27,9 +27,9 @@ export class Comment {
     @Prop({
         type: MongooseSchema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        default: null,
     })
-    authorId: Types.ObjectId;
+    authorId: Types.ObjectId | null;
 
     @Prop({
         type: MongooseSchema.Types.ObjectId,
