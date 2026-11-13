@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength, IsBoolean } from 'class-validator';
 
 export class UpdateProjectDto {
     @IsOptional()
@@ -9,4 +9,8 @@ export class UpdateProjectDto {
     @IsOptional()
     @IsString()
     description?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    showChatHistoryToNewMembers?: boolean | null;
 }

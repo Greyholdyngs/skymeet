@@ -4,6 +4,6 @@ export class ResendOtpDto {
   @IsEmail()
   email: string;
 
-  @IsIn(['email_verification', 'password_reset'])
-  purpose: 'email_verification' | 'password_reset';
+  @IsIn(['email_verification', 'password_reset', 'email_change'])
+  purpose: 'email_verification' | 'password_reset' | 'email_change';
 }

@@ -5,6 +5,8 @@ import { ProjectMember, ProjectMemberSchema } from './schemas/project-member.sch
 import { ProjectMembersService } from './project-members.service.js';
 import { ProjectMembersController } from './project-members.controller.js';
 import { Project, ProjectSchema } from '../projects/schema/project.schema.js';
+
+import { User, UserSchema } from '../auth/schemas/user.schema.js';
 import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
@@ -19,6 +21,10 @@ import { AuthModule } from '../auth/auth.module.js';
                 name: Project.name,
                 schema: ProjectSchema,
             },
+            {
+                name: User.name,
+                schema: UserSchema,
+            }
         ]),
     ],
     controllers: [ProjectMembersController],

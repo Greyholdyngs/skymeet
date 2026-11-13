@@ -8,10 +8,14 @@ import { ProjectMembersModule } from '../project-members/project-members.module.
 
 import { AuthModule } from '../auth/auth.module.js';
 import { Task, TaskSchema } from '../tasks/schema/task.schema.js';
+import { Activity, ActivitySchema } from '../activity/schemas/activity.schema.js';
+
+import { ActivityModule } from '../activity/activity.module.js';
 
 @Module({
     imports: [
         AuthModule,
+        ActivityModule,
         MongooseModule.forFeature([
             {
                 name: Sprint.name,
@@ -21,6 +25,10 @@ import { Task, TaskSchema } from '../tasks/schema/task.schema.js';
                 name: Task.name, 
                 schema: TaskSchema 
             },
+            {
+                name: Activity.name,
+                schema: ActivitySchema,
+            }
         ]),
         ProjectMembersModule,
     ],

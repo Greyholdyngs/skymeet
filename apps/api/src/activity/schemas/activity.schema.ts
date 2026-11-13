@@ -17,10 +17,10 @@ export class Activity {
     @Prop({
         type: MongooseSchema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        default: null,
         index: true,
     })
-    actorId: Types.ObjectId;
+    actorId: Types.ObjectId | null;
 
     @Prop({
         type: String,

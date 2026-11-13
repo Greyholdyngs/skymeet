@@ -8,6 +8,7 @@ import { UpdateCommentDto } from './dto/update-comment.dto.js';
 
 import { ProjectMembersService } from '../project-members/project-members.service.js';
 import { Task } from '../tasks/schema/task.schema.js';
+import { NotificationService } from '../notifications/notification.service.js';
 
 @Injectable()
 export class CommentsService {
@@ -19,6 +20,7 @@ export class CommentsService {
         private readonly taskModel: Model<Task>,
 
         private readonly projectMembersService: ProjectMembersService,
+        private readonly notificationService: NotificationService,
     ) {}
 
     private toObjectId(id: string): Types.ObjectId {
@@ -37,6 +39,14 @@ export class CommentsService {
 
         if (!hasAccess) {
             throw new NotFoundException('Project not found');
+        }
+    }
+
+    private async assertCommentVisible( comment: CommentDocument, projectId: Types.ObjectId, userId: string, ): Promise<void> {
+        const access = await this.projectMembersService.canViewHistoricalChat( projectId, this.toObjectId(userId),);
+
+        if ( !access.allowed && access.joinedAt && comment.createdAt < access.joinedAt ) {
+            throw new NotFoundException('Comment not found');
         }
     }
 
@@ -80,8 +90,9 @@ export class CommentsService {
             if (!parentComment) {
                 throw new NotFoundException( 'Parent comment not found in this discussion' );
             }
-        }
+            await this.assertCommentVisible( parentComment, projectObjectId, userId, );
 
+        }
         const comment = await this.commentModel.create({
             projectId: projectObjectId,
             taskId: taskObjectId,
@@ -90,34 +101,73 @@ export class CommentsService {
             ciphertext: dto.ciphertext,
         });
 
+        const recipientIds = parentCommentId ? await this.commentModel.findById(parentCommentId).distinct('authorId')
+                                             : await this.projectMembersService.findMemberIds(projectObjectId);
+
+        const uniqueRecipients = [
+            ...new Map(recipientIds.filter((id) => !id.equals(authorObjectId)).map((id) => [id.toString(), id]),).values(),
+        ];
+
+        if (uniqueRecipients.length) {
+            await this.notificationService.createMany(
+                uniqueRecipients.map((recipientId) => ({
+                    recipientId,
+                    actorId: authorObjectId,
+                    type: parentCommentId  ? 'comment_reply' as const : 'comment_added' as const,
+                    title: parentCommentId ? 'New reply' : 'New comment',
+                    message: parentCommentId ? 'Someone replied to a comment in a project discussion'
+                                             : 'A new comment was added to a project discussion',
+                    resourceType: 'comment' as const,
+                    resourceId: comment._id,
+                })),
+            );
+        }
+
         return this.populateAuthor(comment._id);
     }
     
-    async findDiscussion( projectId: string, userId: string, taskId?: string, page = 1, limit = 20 ) {
+    async findDiscussion( projectId: string, userId: string, taskId?: string, page = 1, limit = 20, ) {
         const projectObjectId = this.toObjectId(projectId);
+        const userObjectId = this.toObjectId(userId);
+
         await this.assertProjectAccess(projectObjectId, userId);
-
         const taskObjectId = taskId ? await this.validateTask(projectObjectId, taskId) : null;
+        const historyAccess = await this.projectMembersService.canViewHistoricalChat( projectObjectId, userObjectId,);
 
-        const discussionFilter = {
+        const discussionFilter: Record<string, unknown> = {
             projectId: projectObjectId,
             taskId: taskObjectId,
             parentCommentId: null,
         };
 
+        if (!historyAccess.allowed && historyAccess.joinedAt) {
+            discussionFilter.createdAt = { $gte: historyAccess.joinedAt };
+        }
+
         const [comments, total] = await Promise.all([
-            this.commentModel.find(discussionFilter).populate('authorId', 'firstName lastName userName').sort(
-                { createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).exec(),
+            this.commentModel.find(discussionFilter).populate('authorId', 'firstName lastName userName')
+                .sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).exec(),
 
             this.commentModel.countDocuments(discussionFilter),
         ]);
 
         const commentIds = comments.map((comment) => comment._id);
-        const replies = commentIds.length ? await this.commentModel.find({
-                    projectId: projectObjectId,
-                    taskId: taskObjectId,
-                    parentCommentId: { $in: commentIds },
-                }).populate('authorId', 'firstName lastName userName').sort({ createdAt: 1, _id: 1 }).exec() : [];
+
+        const repliesFilter: Record<string, unknown> = {
+            projectId: projectObjectId,
+            taskId: taskObjectId,
+            parentCommentId: { $in: commentIds },
+        };
+
+        if (!historyAccess.allowed && historyAccess.joinedAt) {
+            repliesFilter.createdAt = { $gte: historyAccess.joinedAt };
+        }
+
+        const replies = commentIds.length  ? await this.commentModel.find(repliesFilter)
+                                                        .populate('authorId', 'firstName lastName userName')
+                                                        .sort({ createdAt: 1, _id: 1 })
+                                                        .exec()
+                                                    : [];
 
         const repliesByParent = new Map<string, typeof replies>();
 
@@ -131,7 +181,9 @@ export class CommentsService {
 
         const data = comments.map((comment) => ({
             ...comment.toObject(),
-            replies: (repliesByParent.get(comment._id.toString()) ?? []).map((reply) => reply.toObject() ),
+            replies: (
+                repliesByParent.get(comment._id.toString()) ?? []
+            ).map((reply) => reply.toObject()),
         }));
 
         return {
@@ -160,8 +212,9 @@ export class CommentsService {
         if (!comment) {
             throw new NotFoundException('Comment not found');
         }
+        await this.assertCommentVisible( comment, projectObjectId, userId, );
 
-        if (comment.authorId.toString() !== userId) {
+        if (comment.authorId?.toString() !== userId) {
             throw new ForbiddenException( 'You can only edit your own comments', );
         }
 
@@ -191,7 +244,7 @@ export class CommentsService {
             throw new NotFoundException('Comment not found');
         }
 
-        if (comment.authorId.toString() !== userId) {
+        if (comment.authorId?.toString() !== userId) {
             throw new ForbiddenException( 'You can only delete your own comments' );
         }
 

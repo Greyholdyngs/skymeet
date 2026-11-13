@@ -11,6 +11,7 @@ import { TaskService } from './task.service.js';
 import { ActivityModule } from '../activity/activity.module.js';
 
 import { Sprint, SprintSchema } from '../sprints/schemas/sprint.schema.js';
+import { NotificationsModule } from '../notifications/notification.module.js';
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { Sprint, SprintSchema } from '../sprints/schemas/sprint.schema.js';
         ProjectsModule,
         ProjectMembersModule,
         ActivityModule,
+        NotificationsModule,
         MongooseModule.forFeature([ 
             { 
                 name: Task.name, 

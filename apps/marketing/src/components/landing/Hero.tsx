@@ -72,46 +72,6 @@ const Hero = () => {
     const [secondsLeft, setSecondsLeft] = useState(24 * 60 + 16);   
     const pointer = pointerPositions[activeImage];
 
-    {/*useEffect(() => {
-        if (typedHeroText.length < heroText.length) {
-            const timeout = setTimeout(() => {
-                setTypedHeroText(
-                    heroText.slice(0, typedHeroText.length + 1)
-                );
-            }, 200);
-
-            return () => clearTimeout(timeout);
-        }
-
-        setHeroTyping(false);
-    }, [typedHeroText]);*/}
-
-    {/*useEffect(() => {
-        const timers = images.map((_, index) =>
-        setTimeout(() => {
-            setVisibleImages((current) => [...current, index]);
-            }, index * 600)
-        );
-
-        return () => {
-            timers.forEach(clearTimeout);
-        };
-    }, [])
-
-    useEffect(() => {
-        const entranceDuration = images.length * 600;
-        const startDelay = setTimeout(() => {
-            const interval = setInterval(() => {
-                setActiveImage((current) => {
-                return (current + 1) % images.length;
-                });
-            }, 1400);
-
-            return () => clearInterval(interval);
-            }, entranceDuration + 1500);
-
-        return () => clearTimeout(startDelay);
-    }, []);*/}
     useEffect(() => {
         let cancelled = false;
         let timers: ReturnType<typeof setTimeout>[] = [];
@@ -122,7 +82,6 @@ const Hero = () => {
             setVisibleImages([]);
             setActiveImage(0);
 
-            // 1. Bring participants in
             images.forEach((_, index) => {
             const timer = setTimeout(() => {
                 if (!cancelled) {
@@ -133,7 +92,6 @@ const Hero = () => {
             timers.push(timer);
             });
 
-            // 2. Start pointer after everyone appears
             const pointerStart = setTimeout(() => {
             if (cancelled) return;
 
@@ -143,13 +101,11 @@ const Hero = () => {
                 if (cancelled) return;
 
                 if (index >= images.length) {
-                // 3. Everyone has been visited
                 const fadeTimer = setTimeout(() => {
                     if (cancelled) return;
 
                     setVisibleImages([]);
 
-                    // 4. Start again
                     const restartTimer = setTimeout(() => {
                     if (!cancelled) {
                         runCycle();
@@ -227,33 +183,31 @@ const Hero = () => {
         let timeout: ReturnType<typeof setTimeout>;
 
         const typeText = async () => {
-            // Main text
             for (let i = 0; i <= heroText.length; i++) {
-            if (cancelled) return;
+                if (cancelled) return;
 
-            setTypedHeroText(heroText.slice(0, i));
+                setTypedHeroText(heroText.slice(0, i));
 
-            await new Promise<void>((resolve) => {
-                timeout = setTimeout(resolve, 150);
-            });
+                await new Promise<void>((resolve) => {
+                    timeout = setTimeout(resolve, 150);
+                });
             }
-            // Small pause before accent text
+
             await new Promise<void>((resolve) => {
-            timeout = setTimeout(resolve, 500);
+                timeout = setTimeout(resolve, 500);
             });
-            // Accent text
+
             for (let i = 0; i <= heroAccent.length; i++) {
-            if (cancelled) return;
+                if (cancelled) return;
 
-            setTypedAccent(heroAccent.slice(0, i));
+                setTypedAccent(heroAccent.slice(0, i));
 
-            await new Promise<void>((resolve) => {
-                timeout = setTimeout(resolve, 250);
-            });
+                await new Promise<void>((resolve) => {
+                    timeout = setTimeout(resolve, 250);
+                });
             }
-            // Keep the completed heading visible
             await new Promise<void>((resolve) => {
-            timeout = setTimeout(resolve, 500);
+                timeout = setTimeout(resolve, 500);
             });
 
             if (!cancelled) {

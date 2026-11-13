@@ -10,6 +10,8 @@ import { ProjectMemberRole } from '../project-members/schemas/project-member.sch
 import { UpdateSprintDto } from './dto/update-sprint.dto.js';
 import { Task, TaskDocument } from '../tasks/schema/task.schema.js';
 
+import { ActivityService } from '../activity/activity.service.js';
+import { ActivityAction, ActivityEntityType } from '../activity/activity.types.js';
 
 @Injectable()
 export class SprintsService {
@@ -21,6 +23,8 @@ export class SprintsService {
         private readonly taskModel: Model<TaskDocument>,
 
         private readonly projectMembersService: ProjectMembersService,
+        private readonly activityService: ActivityService,
+
     ) {}
 
     async createSprint( projectId: string, userId: string, dto: CreateSprintDto) {
@@ -56,6 +60,15 @@ export class SprintsService {
             endDate,
             status: SprintStatus.PLANNED,
             createdBy: userObjectId,
+        });
+
+        await this.activityService.record({
+            projectId: projectObjectId,
+            actorId: userObjectId,
+            entityType: ActivityEntityType.SPRINT,
+            entityId: sprint._id,
+            action: ActivityAction.SPRINT_CREATED,
+            entityTitle: sprint.name,
         });
 
         return {
@@ -136,6 +149,15 @@ export class SprintsService {
 
         await sprint.save();
 
+        await this.activityService.record({
+            projectId: projectObjectId,
+            actorId: userObjectId,
+            entityType: ActivityEntityType.SPRINT,
+            entityId: sprint._id,
+            action: ActivityAction.SPRINT_UPDATED,
+            entityTitle: sprint.name,
+        });
+
         return {
             message: 'Sprint updated successfully.',
             sprint,
@@ -162,6 +184,7 @@ export class SprintsService {
         }
 
         const session = await this.sprintModel.db.startSession();
+        let deletedSprintName = '';
 
         try {
             await session.withTransaction(async () => {
@@ -173,6 +196,8 @@ export class SprintsService {
                 if (!sprint) {
                     throw new NotFoundException('Sprint not found.');
                 }
+
+                deletedSprintName = sprint.name;
 
                 await this.taskModel.updateMany(
                     {
@@ -196,6 +221,15 @@ export class SprintsService {
         } finally {
             await session.endSession();
         }
+
+        await this.activityService.record({
+            projectId: projectObjectId,
+            actorId: userObjectId,
+            entityType: ActivityEntityType.SPRINT,
+            entityId: sprintObjectId,
+            action: ActivityAction.SPRINT_DELETED,
+            entityTitle: deletedSprintName,
+        });
 
         return {
             message: 'Sprint deleted successfully.',

@@ -27,9 +27,9 @@ export class TaskReviewEntry {
     @Prop({
         type: MongooseSchema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        default: null,
     })
-    reviewerId: Types.ObjectId;
+    reviewerId: Types.ObjectId | null;
 
     @Prop({
         type: String,
@@ -94,9 +94,9 @@ export class Task {
     @Prop({
         type: MongooseSchema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        default: null,
     })
-    createdBy: Types.ObjectId;
+    createdBy: Types.ObjectId | null;
 
     @Prop({
         type: MongooseSchema.Types.ObjectId,

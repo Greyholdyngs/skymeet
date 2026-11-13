@@ -14,6 +14,8 @@ import { ActivityService } from '../activity/activity.service.js';
 import { ActivityAction, ActivityEntityType } from '../activity/activity.types.js';
 import { Sprint, SprintDocument } from '../sprints/schemas/sprint.schema.js';
 
+import { NotificationService } from '../notifications/notification.service.js';
+
 @Injectable()
 export class TaskService {
     constructor(
@@ -26,6 +28,7 @@ export class TaskService {
         private readonly projectsService: ProjectsService,
         private readonly projectMembersService: ProjectMembersService,
         private readonly activityService: ActivityService,
+        private readonly notificationService: NotificationService,
     ) {}
 
     private readonly logger = new Logger(TaskService.name);
@@ -154,8 +157,17 @@ export class TaskService {
 
         const previousStatus = task.status;
         task.status = TaskStatus.TASK_REVIEW;
-
         const updatedTask = await task.save();
+
+        await this.notificationService.create({
+            recipientId: task.reviewerId,
+            actorId: userId,
+            type: 'task_review_requested',
+            title: 'Task ready for review',
+            message: 'A task has been submitted for your review',
+            resourceType: 'task',
+            resourceId: updatedTask._id,
+        });
 
         await this.logTaskActivity({
             projectId: task.projectId,
@@ -197,8 +209,27 @@ export class TaskService {
 
         const previousStatus = task.status;
         task.status = dto.decision === TaskReviewDecision.APPROVED ? TaskStatus.COMPLETED : TaskStatus.IN_PROGRESS;
-
         const updatedTask = await task.save();
+
+        const notificationType = dto.decision === TaskReviewDecision.APPROVED ? 'task_approved' : 'task_changes_requested';
+        const notificationTitle = dto.decision === TaskReviewDecision.APPROVED ? 'Task approved' : 'Changes requested';
+        const notificationMessage = dto.decision === TaskReviewDecision.APPROVED ? 'Your task has been approved' : 'Changes have been requested on your task';
+
+        const recipients = updatedTask.assigneeIds.filter( (assigneeId) => !assigneeId.equals(userId), );
+        if (recipients.length) {
+
+            await this.notificationService.createMany(
+                recipients.map((recipientId) => ({
+                    recipientId,
+                    actorId: userId,
+                    type: notificationType,
+                    title: notificationTitle,
+                    message: notificationMessage,
+                    resourceType: 'task' as const,
+                    resourceId: updatedTask._id,
+                })),
+            );
+        }
 
         await this.logTaskActivity({
             projectId: task.projectId,
@@ -241,6 +272,22 @@ export class TaskService {
             createdBy: userId,
         });
 
+        const recipients = task.assigneeIds.filter( (assigneeId) => !assigneeId.equals(userId) );
+
+        if (recipients.length) {
+            await this.notificationService.createMany(
+                recipients.map((recipientId) => ({
+                    recipientId,
+                    actorId: userId,
+                    type: 'task_assigned' as const,
+                    title: 'New task assigned',
+                    message: 'You have been assigned a new task',
+                    resourceType: 'task' as const,
+                    resourceId: task._id,
+                })),
+            );
+        }
+
         await this.logTaskActivity({
             projectId: projectObjectId,
             actorId: userId,
@@ -274,9 +321,10 @@ export class TaskService {
 
         const previousTitle = task.title;
         const previousStatus = task.status;
+        const previousAssigneeIds = new Set( task.assigneeIds.map((id) => id.toString()),);
 
         const isOwner = project.ownerId.equals(userId);
-        const isCreator = task.createdBy.equals(userId);
+        const isCreator = task.createdBy?.equals(userId) ?? false;
 
         if (!isOwner && !isCreator) {
             throw new ForbiddenException( 'You cannot edit this task' );
@@ -317,6 +365,23 @@ export class TaskService {
             task.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
         }
         const updatedTask = await task.save();
+
+        const newlyAssigned = updatedTask.assigneeIds.filter( (assigneeId) => !previousAssigneeIds.has(assigneeId.toString()) 
+                                                                && !assigneeId.equals(userId));
+
+        if (newlyAssigned.length) {
+            await this.notificationService.createMany(
+                newlyAssigned.map((recipientId) => ({
+                    recipientId,
+                    actorId: userId,
+                    type: 'task_assigned' as const,
+                    title: 'New task assigned',
+                    message: 'You have been assigned a task',
+                    resourceType: 'task' as const,
+                    resourceId: updatedTask._id,
+                })),
+            );
+        }
 
         await this.logTaskActivity({
             projectId: projectObjectId,
@@ -409,6 +474,4 @@ export class TaskService {
             this.logger.error( `Failed to record activity for task ${input.taskId}`, error instanceof Error ? error.stack : String(error) );
         }
     }
-
-
 }

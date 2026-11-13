@@ -3,7 +3,7 @@ import { Ack, ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, 
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 
-import { Types } from 'mongoose';
+import { Types, Model } from 'mongoose';
 import { CommentsService } from './comment.service.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 
@@ -12,6 +12,8 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { UpdateCommentDto } from './dto/update-comment.dto.js';
+import { InjectModel } from '@nestjs/mongoose';
+import { User, UserDocument } from '../auth/schemas/user.schema.js';
 
 interface AuthenticatedSocket extends Socket {
     data: { userId: string; };
@@ -61,6 +63,9 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
         private readonly jwtService: JwtService,
         private readonly commentsService: CommentsService,
         private readonly projectMembersService: ProjectMembersService,
+
+        @InjectModel(User.name)
+        private readonly userModel: Model<UserDocument>,
     ) {}
 
     private getDiscussionRoom( projectId: string, taskId?: string | null ): string {
@@ -76,16 +81,24 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
             const authToken = client.handshake.auth?.token;
             const authorization = client.handshake.headers.authorization;
 
-            const token = typeof authToken === 'string' ? authToken : authorization?.startsWith('Bearer ')
-                         ? authorization.slice(7) : null;
+            const token = typeof authToken === 'string' ? authToken : authorization?.startsWith('Bearer ') 
+                                                        ? authorization.slice(7) : null;
 
             if (!token) {
                 client.disconnect(true);
                 return;
             }
 
-            const payload = await this.jwtService.verifyAsync<{ sub: string; }>(token);
+            const payload = await this.jwtService.verifyAsync<{ sub: string; tokenVersion?: number; }>(token);
+
             if (!Types.ObjectId.isValid(payload.sub)) {
+                client.disconnect(true);
+                return;
+            }
+
+            const user = await this.userModel.findById(payload.sub).select('tokenVersion').lean().exec();
+
+            if ( !user || (payload.tokenVersion ?? 0) !== (user.tokenVersion ?? 0) ) {
                 client.disconnect(true);
                 return;
             }
@@ -296,5 +309,4 @@ export class CommentsGateway implements OnGatewayConnection, OnGatewayDisconnect
             });
         }
     }
-
 }

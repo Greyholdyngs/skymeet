@@ -7,8 +7,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import type { AuthRequest } from '../auth/types/auth-request.js';
 
 import { UpdateProjectDto } from './dto/update.project.dto.js';
+import { TransferProjectOwnershipDto } from '../project-members/dto/transfer-project-ownership.dto.js';
 import { ProjectMembersService } from '../project-members/project-members.service.js';
-import { ProjectDocument } from './schema/project.schema.js';
 
 @Controller('projects')
 @UseGuards(JwtAuthGuard)
@@ -28,7 +28,6 @@ export class ProjectsController {
             ownerId,
         );
 
-        await this.projectMembersService.createOwner( project._id, ownerId );
         return project;
     }
 
@@ -55,7 +54,7 @@ export class ProjectsController {
 
     @Patch(':id')
     async updateProject( @Param('id') id: string, @Body() body: UpdateProjectDto, @Req() request: AuthRequest ) {
-        const ownerId = new Types.ObjectId(request.user.sub);
+        const actorId = new Types.ObjectId(request.user.sub);
 
         if (!Types.ObjectId.isValid(id)) {
             throw new NotFoundException('Project not found');
@@ -63,7 +62,7 @@ export class ProjectsController {
 
         const project = await this.projectsService.update(
             new Types.ObjectId(id),
-            ownerId,
+            actorId,
             body,
         );
 
@@ -91,4 +90,18 @@ export class ProjectsController {
         return { message: 'Project deleted successfully' };
     }
 
+    @Patch(':id/transfer-ownership')
+    async transferOwnership( @Param('id') id: string, @Body() body: TransferProjectOwnershipDto,
+                             @Req() request: AuthRequest, ) {
+                                
+        if (!Types.ObjectId.isValid(id)) {
+            throw new NotFoundException('Project not found');
+        }
+
+        return this.projectMembersService.transferOwnership(
+            new Types.ObjectId(id),
+            new Types.ObjectId(request.user.sub),
+            body.email,
+        );
+    }
 }
