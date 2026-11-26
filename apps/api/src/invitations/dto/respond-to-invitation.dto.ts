@@ -1,12 +1,18 @@
-
-import { IsIn, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {IsIn, IsNotEmpty, IsOptional, IsString, MinLength, ValidateIf} from 'class-validator';
 
 export class RespondToInvitationDto {
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(32)
-  token: string;
+    @ValidateIf((dto) => !dto.invitationId)
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(32)
+    token?: string;
 
-  @IsIn(['accept', 'decline'])
-  action: 'accept' | 'decline';
+    @ValidateIf((dto) => !dto.token)
+    @IsString()
+    @IsNotEmpty()
+    invitationId?: string;
+
+    @IsIn(['accept', 'decline'])
+    action: 'accept' | 'decline';
 }
+

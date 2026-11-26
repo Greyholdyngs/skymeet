@@ -7,16 +7,17 @@ import MeetingEmptyState from "./EmptyState";
 interface MeetingListProps {
   meetings: Meeting[];
   isLoading?: boolean;
-  onMeetingAction?: ( meeting: Meeting, action: MeetingAction ) => void;
+  userId: string | null;
+  onMeetingAction?: (meeting: Meeting, action: MeetingAction) => void;
 }
 
-const MeetingList = ({ meetings, isLoading = false, onMeetingAction }: MeetingListProps) => {
+const MeetingList = ({meetings,isLoading = false, onMeetingAction, userId, }: MeetingListProps) => {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <div className="h-32 animate-pulse rounded-2xl bg-white/5" />
-        <div className="h-32 animate-pulse rounded-2xl bg-white/5" />
-        <div className="h-32 animate-pulse rounded-2xl bg-white/5" />
+        <div className="h-32 animate-pulse rounded-2xl theme-surface-elevated" />
+        <div className="h-32 animate-pulse rounded-2xl theme-surface-elevated" />
+        <div className="h-32 animate-pulse rounded-2xl theme-surface-elevated" />
       </div>
     );
   }
@@ -29,12 +30,14 @@ const MeetingList = ({ meetings, isLoading = false, onMeetingAction }: MeetingLi
     <div className="space-y-3">
       {meetings.map((meeting) => (
         <MeetingCard
-            key={meeting.id}
-            meeting={meeting}
-            onAction={onMeetingAction}
+          key={meeting.id}
+          meeting={meeting}
+          onAction={onMeetingAction}
+          userId={userId}
         />
       ))}
     </div>
   );
-}
+};
+
 export default MeetingList;

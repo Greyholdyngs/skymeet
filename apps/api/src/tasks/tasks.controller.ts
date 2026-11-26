@@ -8,6 +8,7 @@ import { UpdateTaskDto } from './dto/update-task.dto.js';
 
 import { ReviewTaskDto } from './dto/review-task.dto.js';
 import { TaskService } from './task.service.js'
+import { UpdateCustomFieldDto } from './dto/update-custom-field.dto.js';
 
 @Controller('projects/:projectId/tasks')
 @UseGuards(JwtAuthGuard)
@@ -37,11 +38,7 @@ export class TasksController {
     }
 
     @Patch(':taskId/start')
-    async startTask(
-        @Param('projectId') projectId: string,
-        @Param('taskId') taskId: string,
-        @Req() request: AuthRequest,
-    ) {
+    async startTask( @Param('projectId') projectId: string, @Param('taskId') taskId: string, @Req() request: AuthRequest, ) {
         return this.tasksService.startTask(
             projectId,
             taskId,
@@ -50,11 +47,7 @@ export class TasksController {
     }
 
     @Patch(':taskId/submit-review')
-    async submitForReview(
-        @Param('projectId') projectId: string,
-        @Param('taskId') taskId: string,
-        @Req() request: AuthRequest,
-    ) {
+    async submitForReview( @Param('projectId') projectId: string, @Param('taskId') taskId: string, @Req() request: AuthRequest, ) {
         return this.tasksService.submitForReview(
             projectId,
             taskId,
@@ -63,12 +56,8 @@ export class TasksController {
     }
 
     @Patch(':taskId/review')
-    async reviewTask(
-        @Param('projectId') projectId: string,
-        @Param('taskId') taskId: string,
-        @Body() dto: ReviewTaskDto,
-        @Req() request: AuthRequest,
-    ) {
+    async reviewTask( @Param('projectId') projectId: string, @Param('taskId') taskId: string, @Body() dto: ReviewTaskDto,
+                        @Req() request: AuthRequest,) {
         return this.tasksService.reviewTask(
             projectId,
             taskId,
@@ -82,6 +71,30 @@ export class TasksController {
         const userId = new Types.ObjectId(request.user.sub);
 
         return this.tasksService.delete( projectId, taskId, userId,
+        );
+    }
+
+    @Patch(':taskId/return-to-progress')
+    async returnToProgress( @Param('projectId') projectId: string, @Param('taskId') taskId: string,
+                            @Req() request: AuthRequest, ) {
+        return this.tasksService.returnToProgress(
+            projectId,
+            taskId,
+            new Types.ObjectId(request.user.sub),
+        );
+    }
+
+    @Patch(':taskId/custom-fields/:fieldId')
+    async updateCustomField( @Param('projectId') projectId: string, @Param('taskId') taskId: string,
+                            @Param('fieldId') fieldId: string, @Body() dto: UpdateCustomFieldDto,
+                            @Req() request: AuthRequest, ) {
+
+        return this.tasksService.updateCustomField(
+            projectId,
+            taskId,
+            fieldId,
+            new Types.ObjectId(request.user.sub),
+            dto,
         );
     }
 }

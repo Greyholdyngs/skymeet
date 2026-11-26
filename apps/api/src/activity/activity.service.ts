@@ -50,6 +50,16 @@ export class ActivityService {
                                 .populate('projectId', 'name').sort({ createdAt: -1 }).limit(limit).lean().exec();
     }
 
+    async countForProjects(projectIds: Types.ObjectId[]) {
+        if (projectIds.length === 0) {
+            return 0;
+        }
+
+        return this.activityModel.countDocuments({
+            projectId: { $in: projectIds },
+        }).exec();
+    }
+
     async findForProjects( projectIds: Types.ObjectId[], page = 1, limit = 20 ) {
         if (projectIds.length === 0) {
             return {

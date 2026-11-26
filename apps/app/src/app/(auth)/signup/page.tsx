@@ -14,16 +14,49 @@ import { apiFetch } from "@/app/lib/api";
 const SignUpPage = () => {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const [isPointerInside, setIsPointerInside] = useState(false);
+  const [canHover, setCanHover] = useState(false);
+  const isHoverDevice = () => typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
   const [entered, setEntered] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setEntered(true);
-  }, 300);
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    setCanHover(mediaQuery.matches);
 
-  return () => clearTimeout(timer);
+    const handleChange = (event: MediaQueryListEvent) => {
+      setCanHover(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    const timer = setTimeout(() => { setEntered(true); }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      mediaQuery.removeEventListener("change", handleChange);
+    };
   }, []);
+
+  const handleMouseEnter = () => {
+    if (!isHoverDevice()) return;
+
+    setIsPointerInside(true);
+    setIsExpanded(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (!isHoverDevice()) return;
+
+    setIsPointerInside(false);
+
+    if (!isFocused) {
+      setIsExpanded(false);
+    }
+  };
 
   const [formData, setFormData] = useState<SignupFormData>({
         firstName: "",
@@ -33,7 +66,7 @@ const SignUpPage = () => {
         password: "",
         confirmPassword: "",
     })
-  
+
   const [error, setError] = useState({
         firstName: "",
         lastName: "",
@@ -42,7 +75,7 @@ const SignUpPage = () => {
         password: "",
         confirmPassword: "",
     });
-  
+
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -60,11 +93,11 @@ const SignUpPage = () => {
         if (!formData.firstName.trim()) {
           validationErrors.firstName = `Kindly put in your First Name`;
         }
-        
+
         if (!formData.lastName.trim()) {
           validationErrors.lastName = `Kindly put in your Last Name`;
         }
-        
+
         if (!formData.username.trim()) {
             validationErrors.username = "Your username can't be empty";
         }
@@ -84,6 +117,7 @@ const SignUpPage = () => {
         }
 
         try {
+          setLoading(true)
           const response = await apiFetch<{ message: string; userId: string }>( "/auth/signup",
             {
               method: "POST",
@@ -100,45 +134,64 @@ const SignUpPage = () => {
 
           console.log(response);
 
+          setSuccess(true);
           sessionStorage.setItem("skymeet_signup_email", formData.email);
+          sessionStorage.setItem("skymeet_signup_otp_sent_at", Date.now().toString());
 
           router.push("/verify?purpose=signup");
         } catch (error) {
             setError({
               ...validationErrors,
-              email:
-                error instanceof Error
-                  ? error.message
-                  : "Something went wrong. Please try again.",
+              email: error instanceof Error  ? error.message : "Something went wrong. Please try again.",
             });
           }
   }
 
   return (
-    <section className={`flex flex-col justify-center items-center min-h-screen bg-[#050711] relative`}>
+    <section className={`flex flex-col justify-center items-center min-h-screen bg-theme-bg relative`}>
       <div className="absolute -left-32 -top-32 h-100 w-100 animate-pulse rounded-full bg-[#7C3AED]/10 blur-3xl" />
-      <div 
-        onMouseEnter={() => setIsExpanded(true)}
-        onMouseLeave={() => setIsExpanded(false)}
-        className={`overflow-auto hover:max-h-[70vh] lg:w-[30vw] md:w-[40vw] w-[80vw]  border-2 hide-scrollbar
+      <div
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`overflow-auto lg:w-[30vw] md:w-[40vw] w-[80vw]  border-2 hide-scrollbar
                     flex flex-col items-center md:space-y-7 space-y-2.5 py-5 px-4 rounded-2xl hide-scrollbar transition-all duration-1000
-                    ease-[cubic-bezier(0.22,1,0.36,1)] bg-[#050711]/20 backdrop-blur-2xl border-white/20 shadow-2xl shadow-[#5B21B6]/10
-                    ${isExpanded ? "max-h-[70vh]" : "max-h-20 md:max-h-20"} ${ entered ? "translate-x-0 opacity-100" : "translate-x-[-120vw] opacity-0"}
+                    ease-[cubic-bezier(0.22,1,0.36,1)] bg-theme-surface border-theme-border backdrop-blur-2xl shadow-2xl shadow-[#5B21B6]/10
+                    ${isExpanded ? "max-h-[70vh]" : "max-h-28"} ${ entered ? "translate-x-0 opacity-100" : "translate-x-[-120vw] opacity-0"}
                         `}>
-        {
-          isExpanded ? <h1 className="text-white text-2xl font-extrabold">Create Account</h1> : (
-            <h1 className="text-white text-2xl font-extrabold">
-              <span className="hidden md:inline">Hover here to create account</span>
-              <span className="md:hidden">Tap here to create account</span>
-            </h1>
-          )
-        }
+        <button
+          type="button"
+          onClick={() => {
+            if (!canHover) {
+              setIsExpanded((current) => !current);
+            }
+          }}
+          aria-expanded={isExpanded}
+          className="text-theme-text text-xl sm:text-2xl font-extrabold text-center leading-tight"
+        >
+          {isExpanded ? "Create Account" : canHover ? "Hover here to create account" : "Tap here to create account"}
+        </button>
         <div className={`transition-all duration-500 ease-out w-full
                         ${ isExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5 pointer-events-none"}`}>
-          <form onSubmit={handleSubmit}  className="space-y-5 w-full">
-            <div className={`flex flex-col space-y-2 transition-all duration-500 
+          <form
+            onSubmit={handleSubmit}
+            onFocusCapture={() => setIsFocused(true)}
+
+            onBlurCapture={(e) => {
+              if (!canHover) return;
+              const nextTarget = e.relatedTarget as Node | null;
+
+              if (!e.currentTarget.contains(nextTarget)) {
+                setIsFocused(false);
+
+                if (!isPointerInside) {
+                  setIsExpanded(false);
+                }
+              }
+            }}
+            className="space-y-5 w-full">
+            <div className={`flex flex-col space-y-2 transition-all duration-500
                             ${isExpanded ? "opacity-100 translate-y-0 delay-100" : "opacity-0 translate-y-3"}`}>
-              <InputField 
+              <InputField
                 label="First Name"
                 type="text"
                 value={formData.firstName}
@@ -146,12 +199,12 @@ const SignUpPage = () => {
                 placeholder="Joe"
                 onChange={(e) => { setError({ ...error, firstName: ""});
                                   setFormData({ ...formData, firstName: e.target.value});
-                
+
                 }}/>
             </div>
-            <div className={`flex flex-col space-y-2 transition-all duration-500 
+            <div className={`flex flex-col space-y-2 transition-all duration-500
                                     ${isExpanded ? "opacity-100 translate-y-0 delay-150" : "opacity-0 translate-y-3"}`}>
-              <InputField 
+              <InputField
                 label="Last Name"
                 type="text"
                 value={formData.lastName}
@@ -163,7 +216,7 @@ const SignUpPage = () => {
             </div>
             <div className={`flex flex-col space-y-2 transition-all duration-500 relative
                                     ${isExpanded ? "opacity-100 translate-y-0 delay-200" : "opacity-0 translate-y-3"}`}>
-              <InputField 
+              <InputField
                 label="Username"
                 type="text"
                 value={formData.username}
@@ -175,7 +228,7 @@ const SignUpPage = () => {
             </div>
             <div className={`flex flex-col space-y-2 transition-all duration-500 relative
                                     ${isExpanded ? "opacity-100 translate-y-0 delay-250" : "opacity-0 translate-y-3"}`}>
-            <InputField 
+            <InputField
               label="Email"
               type="email"
               value={formData.email}
@@ -225,19 +278,20 @@ const SignUpPage = () => {
                 }}
               />
             </div>
-            <button type="submit"
-                         className={`bg-[#7C3AED] text-white py-3 rounded-2xl hover:bg-[#6D28D9] w-full
-                                    transition-colors cursor-pointer duration-300 hover:scale-[1.02] active:scale-[0.98]
-                                    ${ isExpanded ? "opacity-100 translate-y-0 delay-250" : "opacity-0 translate-y-3"
-    }`}> 
-                        Create Account
-                    </button>             
+            <button
+              type="submit"
+              disabled={loading || success}
+              className={`bg-[#7C3AED] text-white py-3 rounded-2xl hover:bg-[#6D28D9] w-full transition-colors
+                          cursor-pointer duration-300 hover:scale-[1.02] active:scale-[0.98]
+                        ${ isExpanded ? "opacity-100 translate-y-0 delay-250" : "opacity-0 translate-y-3"}`}>
+                { loading ? "Creating Account..." : "Create Account"}
+              </button>
           </form>
         </div>
-        <div className={`text-sm md:text-lg transition-all duration-500 text-white/40
+        <div className={`text-sm md:text-lg transition-all duration-500 theme-text-secondary
                             ${ isExpanded ? "opacity-100 translate-y-0 delay-300" : "opacity-0 translate-y-3 pointer-events-none"}`}>
                 Already have an account? {" "}
-                <Link href="/login" className="text-[#ffffff]/70 hover:underline hover:text-[#7C3AED] transform duration-300 font-semibold">Login</Link>
+                <Link href="/login" className="text-theme-text-secondary hover:underline hover:text-[#7C3AED] transform duration-300 font-semibold">Login</Link>
             </div>
       </div>
       <div className="absolute right-0 bottom-0 h-80 w-80 animate-pulse rounded-full bg-[#7C3AED]/10 blur-3xl" />

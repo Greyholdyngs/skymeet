@@ -1,4 +1,72 @@
+
 @import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --app-bg: #0F0F14;
+  --surface: #14141B;
+  --surface-elevated: #1A1A23;
+  --surface-hover: #22222D;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --text-primary: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --app-bg: #F8F9FC;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F3F8;
+  --surface-hover: #E9ECF3;
+  --border: #E2E5ED;
+  --border-subtle: #ECEEF3;
+  --text-primary: #171923;
+  --text-secondary: #596174;
+  --text-muted: #7B8496;
+}
+
+body {
+  background-color: var(--app-bg);
+  color: var(--text-primary);
+}
+
+.theme-bg {
+  background-color: var(--app-bg);
+}
+
+.theme-surface {
+  background-color: var(--surface);
+}
+
+.theme-surface-elevated {
+  background-color: var(--surface-elevated);
+}
+
+.theme-surface-hover:hover {
+  background-color: var(--surface-hover);
+}
+
+.theme-border {
+  border-color: var(--border);
+}
+
+.theme-border-subtle {
+  border-color: var(--border-subtle);
+}
+
+.theme-text {
+  color: var(--text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--text-secondary);
+}
+
+.theme-text-muted {
+  color: var(--text-muted);
+}
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
@@ -10,8 +78,7 @@
 }
 
 @keyframes shake {
-  0%,
-  100% {
+  0%, 100% {
     transform: translateX(0);
   }
 

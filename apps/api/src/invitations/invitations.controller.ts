@@ -1,4 +1,4 @@
-import { Body,Get, Controller, Param, Post, Req, UseGuards} from '@nestjs/common';
+import { Body,Get, Controller, Param, Post, Req, UseGuards, BadRequestException} from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
@@ -31,9 +31,32 @@ export class InvitationsController {
         );
     }
 
+    @Get('projects/:projectId/invitations/pending')
+    @UseGuards(JwtAuthGuard)
+    async getPendingInvitation( @Param('projectId') projectId: string, @Req() request: AuthenticatedRequest, ) {
+
+        return this.invitationsService.getPendingInvitation(
+            projectId,
+            request.user.sub,
+            request.user.email,
+        );
+    }
+
     @Post('invitations/respond')
     @UseGuards(JwtAuthGuard)
-    async respondToInvitation( @Body() dto: RespondToInvitationDto, @Req() request: AuthenticatedRequest ) {
+    async respondToInvitation( @Body() dto: RespondToInvitationDto, @Req() request: AuthenticatedRequest,) {
+        if (dto.invitationId) {
+            return this.invitationsService.respondToInvitationById(
+                dto.invitationId,
+                dto.action,
+                request.user.sub,
+                request.user.email,
+            );
+        }
+
+        if (!dto.token) {
+            throw new BadRequestException('An invitation token or ID is required.');
+        }
 
         if (dto.action === 'accept') {
             return this.invitationsService.acceptInvitation(

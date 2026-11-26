@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
-import { Notification, NotificationDocument} from './schemas/notification.schema.js';
+import { Notification, NotificationDocument } from './schemas/notification.schema.js';
 import { NotificationGateway } from './notification.gateway.js';
 import { User, UserDocument } from '../auth/schemas/user.schema.js';
 
@@ -28,11 +28,17 @@ export class NotificationService {
         private readonly notificationGateway: NotificationGateway,
     ) {}
 
-    
-    async create(input: CreateNotificationInput) {
-        const recipient = await this.userModel.findById(input.recipientId).select('preferences.inAppNotifications').lean().exec();
+    private isCommentNotification(type: Notification['type']): boolean {
+        return type === 'comment_added' || type === 'comment_reply';
+    }
 
-        if (recipient?.preferences?.inAppNotifications === false) {
+    async create(input: CreateNotificationInput) {
+        const recipient = await this.userModel.findById(input.recipientId)
+            .select('preferences.inAppNotifications preferences.commentNotifications').lean().exec();
+
+        if ( recipient?.preferences?.inAppNotifications === false || (this.isCommentNotification(input.type) &&
+                recipient?.preferences?.commentNotifications === false) ) {
+
             return null;
         }
 
@@ -54,20 +60,38 @@ export class NotificationService {
     async createMany(inputs: CreateNotificationInput[]) {
         if (!inputs.length) return [];
 
-        const recipientIds = [ ...new Set(inputs.map(input => input.recipientId.toString())), ];
+        const recipientIds = [
+            ...new Set(inputs.map((input) => input.recipientId.toString())),
+        ];
 
-        const recipients = await this.userModel.find({ _id: { $in: recipientIds } }).select('preferences.inAppNotifications').lean().exec();
+        const recipients = await this.userModel.find({ _id: { $in: recipientIds } })
+            .select('preferences.inAppNotifications preferences.commentNotifications').lean().exec();
 
-        const enabledRecipients = new Set(
-            recipients.filter(user => user.preferences?.inAppNotifications !== false).map(user => user._id.toString()),
+        const preferencesByUser = new Map(
+            recipients.map((user) => [
+                user._id.toString(),
+                user.preferences,
+            ]),
         );
 
-        const allowedInputs = inputs.filter(input => enabledRecipients.has(input.recipientId.toString()), );
+        const allowedInputs = inputs.filter((input) => {
+            const preferences = preferencesByUser.get(input.recipientId.toString());
+
+            if (preferences?.inAppNotifications === false) {
+                return false;
+            }
+
+            if ( this.isCommentNotification(input.type) && preferences?.commentNotifications === false ) {
+                return false;
+            }
+
+            return true;
+        });
 
         if (!allowedInputs.length) return [];
 
         const notifications = await this.notificationModel.insertMany(
-            allowedInputs.map(input => ({
+            allowedInputs.map((input) => ({
                 ...input,
                 actorId: input.actorId ?? null,
                 resourceType: input.resourceType ?? null,
@@ -85,7 +109,7 @@ export class NotificationService {
         return notifications;
     }
 
-    async findForUser( userId: Types.ObjectId, page = 1, limit = 20 ) {
+    async findForUser(userId: Types.ObjectId, page = 1, limit = 20) {
         const safePage = Math.max(1, Math.floor(page));
         const safeLimit = Math.min(50, Math.max(1, Math.floor(limit)));
         const skip = (safePage - 1) * safeLimit;
@@ -93,8 +117,8 @@ export class NotificationService {
         const filter = { recipientId: userId };
 
         const [notifications, total] = await Promise.all([
-            this.notificationModel.find(filter).populate('actorId', 'firstName lastName userName').sort({ createdAt: -1 })
-                .skip(skip).limit(safeLimit).exec(),
+            this.notificationModel.find(filter).populate('actorId', 'firstName lastName userName')
+                .sort({ createdAt: -1 }).skip(skip).limit(safeLimit).exec(),
 
             this.notificationModel.countDocuments(filter),
         ]);
@@ -119,7 +143,7 @@ export class NotificationService {
         };
     }
 
-    async markAsRead( notificationId: string, userId: Types.ObjectId ) {
+    async markAsRead(notificationId: string, userId: Types.ObjectId) {
         if (!Types.ObjectId.isValid(notificationId)) {
             throw new NotFoundException('Notification not found');
         }
@@ -164,3 +188,4 @@ export class NotificationService {
         };
     }
 }
+

@@ -1,9 +1,8 @@
-
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderKanban, ListTodo, Clock3, Activity } from "lucide-react";
+import { FolderKanban,  ListTodo,  Clock3,  Activity, } from "lucide-react";
 
 import AuthGuard from "../components/auth/AuthGuard";
 import StatCard from "../components/dashboard/homepage/StatCard";
@@ -13,39 +12,29 @@ import DashboardProjectSection, { type DashboardProject } from "../components/da
 import InviteMemberModal from "../components/dashboard/project/members/InviteMemberModal";
 import type { InviteMemberInput, InviteProjectOption } from "../components/dashboard/project/members/types";
 
-import { apiFetch } from "../lib/api";
+import { useDashboardData } from "./hooks/useDashboardData";
+import MyTasksSection from "../components/dashboard/homepage/MyTaskSection";
+import RecentActivitySection from "../components/dashboard/homepage/RecentActivitySection";
+
+import { apiFetch } from "@/app/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/app/lib/queries/query-key";
+
+
+interface DashboardSummary {
+  totalProjects: number;
+  myTasksCount: number;
+  overdueTasks: number;
+  upcomingDeadlinesCount: number;
+  recentActivityCount: number;
+}
 
 const DashboardPage = () => {
+  const queryClient = useQueryClient();
   const router = useRouter();
+  const { projects, summary, user, loading, error: loadError, isNewUser, reload: loadDashboard} = useDashboardData();
 
-  const [projects, setProjects] = useState<DashboardProject[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [loadError, setLoadError] = useState("");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
-
-  const loadProjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      setLoadError("");
-
-      const data = await apiFetch<DashboardProject[]>("/projects");
-      setProjects(data);
-    } catch (error) {
-      setLoadError(
-        error instanceof Error ? error.message : "Unable to load your projects.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-     void loadProjects();
-  }, [loadProjects]);
-
-  const isNewUser = !loading && !loadError && projects.length === 0;
-
   const inviteProjects: InviteProjectOption[] = projects.map((project) => ({
     id: project._id,
     name: project.name,
@@ -64,72 +53,91 @@ const DashboardPage = () => {
     setIsInviteOpen(true);
   };
 
-  const handleInvite = async (input: InviteMemberInput) => {
-    console.info("Invitation UI submitted:", input);
-    throw new Error("Invitation sending is not connected to the backend yet.");
+  const inviteMutation = useMutation({
+      mutationFn: (input: InviteMemberInput) =>
+          apiFetch(`/projects/${input.projectId}/invitations`, {
+              method: "POST",
+              body: JSON.stringify({
+                  ...(input.method === "email" ? { email: input.identifier } : { userName: input.identifier }),
+                  role: input.role,
+              }),
+          }),
+      onSuccess: async (_, input) => {
+          await Promise.all([
+              queryClient.invalidateQueries({ queryKey: queryKeys.projects.members(input.projectId), }),
+              loadDashboard(),
+          ]);
+      },
+  });
+
+  const handleInvite = async (input: InviteMemberInput): Promise<void> => {
+      await inviteMutation.mutateAsync(input);
+  };
+
+  const metric = (value: number | undefined) => {
+    if (loading || loadError || value === undefined) return "—";
+    return value;
   };
 
   return (
     <AuthGuard>
       <main className="min-h-full">
-        <div className="mx-auto max-w-7xl space-y-8 px-6 py-8 md:px-10">
+        <div className="mx-auto w-full max-w-7xl min-w-0 space-y-6 px-3 py-5 min-[400px]:px-4 sm:space-y-8 sm:px-6 sm:py-8 md:px-10">
           <WelcomeBanner
-            name="Emmanuel"
+            name={user?.firstName ?? "there"}
             isNewUser={isNewUser}
             onCreateProject={handleCreateProject}
             onInvitePeople={handleInvitePeople}
           />
-          {loadError && (
-            <div
-              role="alert"
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-400/20 bg-red-400/5 p-4"
-            >
+          <section className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Total Projects"
+              value={metric(summary?.totalProjects)}
+              icon={FolderKanban}
+            />
+            <StatCard
+              title="My Tasks"
+              value={metric(summary?.myTasksCount)}
+              icon={ListTodo}
+            />
+            <StatCard
+              title="Upcoming Deadlines"
+              value={metric(summary?.upcomingDeadlinesCount)}
+              icon={Clock3}
+            />
+            <StatCard
+              title="Activity Events"
+              value={metric(summary?.recentActivityCount)}
+              icon={Activity}
+            />
+          </section>
+          {
+            loadError && (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-400/20 bg-red-400/5 p-4" >
               <p className="text-sm text-red-300">{loadError}</p>
               <button
                 type="button"
-                onClick={() => void loadProjects()}
+                onClick={() => void loadDashboard()}
                 className="text-sm font-medium text-white hover:text-[#A78BFA]"
               >
                 Try again
               </button>
             </div>
           )}
-          {!isNewUser && !loading && !loadError && (
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                title="Total Projects"
-                value={projects.length}
-                icon={FolderKanban}
-              />
-              <StatCard
-                title="My Tasks"
-                value="—"
-                icon={ListTodo}
-              />
-              <StatCard
-                title="Upcoming Deadlines"
-                value="—"
-                icon={Clock3}
-              />
-              <StatCard
-                title="Recent Activity"
-                value="—"
-                icon={Activity}
-              />
-            </section>
-          )}
-          <section className="grid gap-6 xl:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-[#14141B] p-6">
-              <h2 className="text-lg font-semibold text-white">My Tasks</h2>
-              <p className="mt-2 text-sm leading-6 text-white/40"> Your assigned tasks and work requiring your attention will appear here once task data is connected. </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-[#14141B] p-6">
-              <h2 className="text-lg font-semibold text-white"> Recent Activity </h2>
-              <p className="mt-2 text-sm leading-6 text-white/40"> Project updates, comments, and task activity will appear here when the activity feed is connected. </p>
-            </div>
+          <section className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+            <MyTasksSection
+              tasks={summary?.myTasks ?? []}
+              loading={loading}
+            />
+            <RecentActivitySection
+              activities={summary?.recentActivity ?? []}
+              loading={loading}
+            />
           </section>
           <DashboardProjectSection
             projects={projects}
+            loading={loading}
+            hasError={!!loadError}
             onCreateProject={handleCreateProject}
           />
         </div>
@@ -142,6 +150,7 @@ const DashboardPage = () => {
       />
     </AuthGuard>
   );
-} 
+};
 
-export default DashboardPage
+export default DashboardPage;
+

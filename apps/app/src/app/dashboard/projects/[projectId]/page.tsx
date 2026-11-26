@@ -1,71 +1,73 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CalendarDays, FileText, ListTodo, MoreHorizontal, Users } from "lucide-react";
 
 import { apiFetch } from "@/app/lib/api";
 import type { Project } from "@/app/types/project";
-import ProjectCalendar from "@/app/components/dashboard/projectTabs/ProjectCalendar";
+import ProjectCalendar from "@/app/components/dashboard/project/projectTabs/ProjectCalendar";
 
-import ProjectDocuments from "@/app/components/dashboard/projectTabs/ProjectDocuments";
-import ProjectMembers from "@/app/components/dashboard/projectTabs/ProjectMembers";
-import ProjectOverview from "@/app/components/dashboard/projectTabs/ProjectOverview";
+import ProjectDocuments from "@/app/components/dashboard/project/projectTabs/ProjectDocuments";
+import ProjectMembers from "@/app/components/dashboard/project/projectTabs/ProjectMembers";
+import ProjectOverview from "@/app/components/dashboard/project/projectTabs/ProjectOverview";
 
-import ProjectTasks from "@/app/components/dashboard/projectTabs/ProjectTasks";
+import ProjectTasks from "@/app/components/dashboard/project/projectTabs/ProjectTasks";
 import { UserPlus } from "lucide-react";
 import InviteMemberModal from "@/app/components/dashboard/project/members/InviteMemberModal";
 
 import { InviteMemberInput } from "@/app/components/dashboard/project/members/types";
+import ProjectSprints from "@/app/components/dashboard/project/projectTabs/sprints/ProjectSprints";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { queryKeys } from "@/app/lib/queries/query-key";
 
-type ProjectTab = | "overview" | "tasks" | "calendar" | "documents" | "members";
+type ProjectTab = | "overview" | "tasks" | "sprints" | "calendar" | "documents" | "members";
 
 const ProjectPage = () => {
     const params = useParams();
     const projectId = params.projectId as string;
     const [activeTab, setActiveTab] = useState<ProjectTab>("overview");
 
-    const [project, setProject] = useState<Project | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const queryClient = useQueryClient();
+
+    const projectQuery = useQuery({
+        queryKey: queryKeys.projects.detail(projectId),
+        queryFn: () => apiFetch<Project>(`/projects/${projectId}`),
+        enabled: Boolean(projectId),
+    });
+
+    const project = projectQuery.data ?? null;
+    const loading = projectQuery.isLoading;
+    const error = projectQuery.error instanceof Error ? projectQuery.error.message : "";
 
     const buttonStyle = "flex shrink-0 items-center gap-2 border-b-2 pb-3 text-sm transition cursor-pointer"
     const [isInviteOpen, setIsInviteOpen] = useState(false);
 
-    const handleInvite = async (input: InviteMemberInput) => {
-        console.log("Invitation payload:", input);
+    const inviteMutation = useMutation({
+        mutationFn: (input: InviteMemberInput) =>
+            apiFetch(`/projects/${input.projectId}/invitations`, {
+                method: "POST",
+                body: JSON.stringify({
+                    ...(input.method === "email" ? { email: input.identifier } : { userName: input.identifier }),
+                    role: input.role,
+                }),
+            }),
+        onSuccess: async (_, input) => {
+            await queryClient.invalidateQueries({
+                queryKey: queryKeys.projects.members(input.projectId),
+            });
+        },
+    });
+
+    const handleInvite = async (input: InviteMemberInput): Promise<void> => {
+        await inviteMutation.mutateAsync(input);
     };
-
-    useEffect(() => {
-        const loadProject = async () => {
-            try {
-                setLoading(true);
-                setError("");
-
-                const data = await apiFetch<Project>(`/projects/${projectId}`);
-                setProject(data);
-
-            } catch (error) {
-                setError(
-                    error instanceof Error ? error.message : "Unable to load project.",
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (projectId) {
-            loadProject();
-        }
-    }, [projectId]);
 
     if (loading) {
         return (
             <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-7xl">
-                    <p className="text-sm text-white/40">
-                        Loading project...
-                    </p>
+                    <p className="text-sm text-white/40"> Loading project... </p>
                 </div>
             </div>
         );
@@ -75,9 +77,7 @@ const ProjectPage = () => {
         return (
             <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-7xl">
-                    <p className="text-sm text-red-400">
-                        {error || "Project not found."}
-                    </p>
+                    <p className="text-sm text-red-400"> {error || "Project not found."} </p>
                 </div>
             </div>
         );
@@ -91,14 +91,14 @@ const ProjectPage = () => {
                         <button
                             type="button"
                             onClick={() => window.history.back()}
-                            className="mb-5 flex items-center gap-2 text-sm text-white/40 transition hover:text-white"
+                            className="mb-5 flex items-center gap-2 text-sm text-theme-secondary transition"
                         >
                             <ArrowLeft size={16} />
                             Back to projects
                         </button>
                         <button
                             type="button"
-                            className="rounded-lg p-2 text-white/40 transition hover:bg-white/5 hover:text-white"
+                            className="rounded-lg p-2 transition hover:bg-white"
                             aria-label="Project options"
                         >
                             <MoreHorizontal size={20} />
@@ -107,7 +107,7 @@ const ProjectPage = () => {
                     <p className="text-sm font-medium text-[#A78BFA]"> Project </p>
                     <div className="flex items-center justify-between">
                             <div>
-                                <h1 className="mt-1 text-3xl font-bold text-white">
+                                <h1 className="mt-1 text-3xl font-bold text-theme">
                                     {project.name}
                                 </h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-white/40">
@@ -131,28 +131,34 @@ const ProjectPage = () => {
                         <button
                             type="button"
                             onClick={() => setActiveTab("overview")}
-                            className={`${buttonStyle} ${
-                                        activeTab === "overview" ? "border-[#A78BFA] text-white" : "border-transparent text-white/40 hover:text-white"
-                                    }`}
+                            className={`${buttonStyle} ${ activeTab === "overview" ? "border-[#A78BFA] theme-text"
+                                                        : "border-transparent theme-text-secondary hover:text-[#A78BFA]" }`}
                         >
                             Overview
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveTab("tasks")}
-                            className={`${buttonStyle} ${
-                                        activeTab === "tasks" ? "border-[#A78BFA] font-medium text-white" : "border-transparent text-white/40 hover:text-white"
-                                     }`}
+                            className={`${buttonStyle} ${ activeTab === "tasks" ? "border-[#A78BFA] font-medium theme-text"
+                                                                : "border-transparent theme-text-secondary hover:text-[#A78BFA]"}`}
                         >
                             <ListTodo size={16} />
                             Tasks
                         </button>
                         <button
                             type="button"
+                            onClick={() => setActiveTab("sprints")}
+                            className={`${buttonStyle} ${ activeTab === "sprints" ? "border-[#A78BFA] font-medium theme-text"
+                                                            : "border-transparent theme-text-secondary hover:text-[#A78BFA]"}`}
+                        >
+                            <ListTodo size={16} />
+                            Sprints
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => setActiveTab("calendar")}
-                            className={`${buttonStyle} ${
-                                        activeTab === "calendar" ? "border-[#A78BFA] font-medium text-white" : "border-transparent text-white/40 hover:text-white"
-                                     }`}
+                            className={`${buttonStyle} ${ activeTab === "calendar" ? "border-[#A78BFA] font-medium theme-text"
+                                                                        : "border-transparent theme-text-secondary hover:text-[#A78BFA]"}`}
                         >
                             <CalendarDays size={16} />
                             Calendar
@@ -161,7 +167,7 @@ const ProjectPage = () => {
                             type="button"
                             onClick={() => setActiveTab("documents")}
                             className={`${buttonStyle} ${
-                                        activeTab === "documents" ? "border-[#A78BFA] font-medium text-white" : "border-transparent text-white/40 hover:text-white"
+                                        activeTab === "documents" ? "border-[#A78BFA] font-medium theme-text" : "border-transparent theme-text-secondary hover:text-[#A78BFA]"
                                      }`}
                         >
                             <FileText size={16} />
@@ -171,7 +177,7 @@ const ProjectPage = () => {
                             type="button"
                             onClick={() => setActiveTab("members")}
                             className={`${buttonStyle} ${
-                                        activeTab === "members" ? "border-[#A78BFA] font-medium text-white" : "border-transparent text-white/40 hover:text-white"
+                                        activeTab === "members" ? "border-[#A78BFA] font-medium theme-text" : "border-transparent theme-text-secondary hover:text-[#A78BFA]"
                                      }`}
                         >
                             <Users size={16} />
@@ -186,6 +192,9 @@ const ProjectPage = () => {
                     {activeTab === "tasks" && (
                         <ProjectTasks project={project} />
                     )}
+                    {activeTab === "sprints" && (
+                        <ProjectSprints project={project} />
+                    )}
                     {activeTab === "calendar" && (
                         <ProjectCalendar project={project} />
                     )}
@@ -193,7 +202,10 @@ const ProjectPage = () => {
                         <ProjectDocuments project={project} />
                     )}
                     {activeTab === "members" && (
-                        <ProjectMembers project={project} />
+                        <ProjectMembers
+                            project={project}
+                            onAddMember={() => setIsInviteOpen(true)}
+                        />
                     )}
                 </div>
             </div>

@@ -1,98 +1,69 @@
-"use client"
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import {
-  House,
-  Video,
-  FolderKanban,
-  CirclePlay,
-  Users,
-} from "lucide-react";
+import { House, Video, FolderKanban, Users} from "lucide-react";
 
 const sidebarContent = [
-    {
-        label: "Home",
-        icon: House,
-        href: "/dashboard",
-    },
-    {
-        label: "Meetings",
-        icon: Video,
-        href: "/dashboard/meetings",
-    },
-    {
-        label: "Project",
-        icon: FolderKanban,
-        href: "/dashboard/projects",
-    },
-    {
-        label: "People",
-        icon: Users,
-        href: "/dashboard/people",
-    },
-    ]
+    { label: "Home", icon: House, href: "/dashboard" },
+    { label: "Meetings", icon: Video, href: "/dashboard/meetings" },
+    { label: "Projects", icon: FolderKanban, href: "/dashboard/projects" },
+    { label: "People", icon: Users, href: "/dashboard/people" },
+];
+
 const Sidebar = () => {
     const pathname = usePathname();
-  return (
-    <aside className="bg-[#0B0B10] border-r border-r-[#27272A] px-5 pt-3 max-w-[18vw] space-y-3">
-        <div>
-            <Link href="/dashboard">
-                <Image
-                    src="/icons/logo.png"
-                    alt="SkyMeet"
-                    width={140}
-                    height={40}
-                    priority
-                />
-            </Link>
-        </div>
-        <nav className="flex flex-col justify-between">
+
+    return (
+        <aside className="hidden h-full w-64 shrink-0 flex-col space-y-6 border-r theme-border theme-bg px-4 py-4 lg:flex">
             <div>
-                <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/30">Workspace</p>
-                <ul className="space-y-3">
-                {
-                    sidebarContent.map((item) => {
-                        const Icon = item.icon;
+                <Link href="/dashboard">
+                    <Image
+                        src="/icons/logo.png"
+                        alt="SkyMeet"
+                        width={160}
+                        height={46}
+                        priority
+                    />
+                </Link>
+            </div>
+            <nav className="flex flex-1 flex-col justify-between">
+                <div>
+                    <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] theme-text-muted"> Workspace </p>
+                    <ul className="space-y-3">
+                        {sidebarContent.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
 
-                        const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
-
-                        return (
-                            <li key={item.label}>
-                                <Link
-                                    href={item.href}
-                                    className={`flex items-center space-x-3 p-2 rounded-lg ${isActive ? "bg-[#5B21B6]/50 font-medium shadow-[inset_0_0_0_1px_rgba(124,58,237,0.25)] text-white" : "text-white/50 hover:bg-white/5 hover:text-white"}`}
-                                >
-                                    <Icon
-                                        size={20}
-                                        className={`transition-transform duration-300 group-hover:scale-110 ${
-                                        isActive
-                                            ? "text-[#A78BFA]"
-                                            : "text-white/40 hover:text-white"
+                            return (
+                                <li key={item.label}>
+                                    <Link
+                                        href={item.href}
+                                        className={`flex items-center space-x-3 rounded-lg p-2 transition ${
+                                            isActive ? "bg-[#7C3AED]/10 font-medium text-[#7C3AED] shadow-[inset_0_0_0_1px_rgba(124,58,237,0.2)]"
+                                                     : "theme-text-secondary hover:bg-black/5 hover:theme-text"
                                         }`}
-                                    />
-                                    <span>{item.label}</span>
-                                </Link>
-                            </li>
-                        )
-                    })
-                }
-                </ul>
-            </div>
-            <div className="mt-auto rounded-2xl border border-white/10 bg-white/3 p-4">
-                <p className="text-sm font-semibold text-white">
-                SkyMeet Workspace
-                </p>
+                                    >
+                                        <Icon
+                                            size={20}
+                                            className={isActive ? "text-[#7C3AED]" : "theme-text-muted" }
+                                        />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+                <div className="mt-auto rounded-2xl border theme-border theme-surface p-4">
+                    <p className="text-sm font-semibold theme-text"> SkyMeet Workspace</p>
+                    <p className="mt-1 text-xs leading-5 theme-text-secondary"> Collaborate, meet and manage your work from one place. </p>
+                </div>
+            </nav>
+        </aside>
+    );
+};
 
-                <p className="mt-1 text-xs leading-5 text-white/40">
-                Collaborate, meet and manage your work from one place.
-                </p>
-            </div>
-        </nav>
-        
-    </aside>
-  )
-}
-
-export default Sidebar
+export default Sidebar;

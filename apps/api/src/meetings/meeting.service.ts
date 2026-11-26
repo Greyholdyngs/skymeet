@@ -9,6 +9,8 @@ import { Meeting, MeetingDocument } from './schemas/meeting.schema.js';
 import { CreateMeetingDto } from './dto/create-meeting.dto.js';
 import { UpdateMeetingDto } from './dto/update-meeting.dto.js';
 import { NotificationService } from '../notifications/notification.service.js';
+
+import { User, UserDocument } from '../auth/schemas/user.schema.js';
 @Injectable()
 export class MeetingService {
     private readonly logger = new Logger(MeetingService.name);
@@ -16,6 +18,9 @@ export class MeetingService {
     constructor(
         @InjectModel(Meeting.name)
         private readonly meetingModel: Model<MeetingDocument>,
+
+        @InjectModel(User.name)
+        private readonly userModel: Model<UserDocument>,
 
         private readonly projectsService: ProjectsService,
         private readonly projectMembersService: ProjectMembersService,
@@ -77,34 +82,27 @@ export class MeetingService {
         }
     }
 
-    private async assertGeneralMeetingAttendees( userId: Types.ObjectId, attendeeIds: string[] ): Promise<void> {
+    private async assertGeneralMeetingAttendees( userId: Types.ObjectId, attendeeIds: string[], ): Promise<void> {
         const uniqueIds = [...new Set(attendeeIds)];
 
         for (const id of uniqueIds) {
             if (!Types.ObjectId.isValid(id)) {
-                throw new BadRequestException( 'One or more attendee IDs are invalid' );
+                throw new BadRequestException( 'One or more attendee IDs are invalid', );
             }
         }
 
-        const projects = await this.projectsService.findAccessibleToUser(userId);
-        const allowedIds = new Set<string>([userId.toString()]);
-
-        const memberGroups = await Promise.all(
-            projects.map(async (project) => {
-                allowedIds.add(project.ownerId.toString());
-
-                return this.projectMembersService.findMemberIds(project._id);
-            }),
+        const externalAttendeeIds = uniqueIds.filter(
+            (id) => id !== userId.toString(),
         );
 
-        for (const memberIds of memberGroups) {
-            for (const id of memberIds) {
-                allowedIds.add(id.toString());
-            }
+        if (externalAttendeeIds.length === 0) {
+            return;
         }
 
-        if (uniqueIds.some((id) => !allowedIds.has(id))) {
-            throw new BadRequestException( 'All attendees must belong to a project you can access' );
+        const existingUsers = await this.userModel.find({ _id: { $in: externalAttendeeIds },}).select('_id').lean().exec();
+
+        if (existingUsers.length !== externalAttendeeIds.length) {
+            throw new BadRequestException( 'One or more selected attendees do not exist', );
         }
     }
 

@@ -24,6 +24,9 @@ import { UsersModule } from './users/users.module.js';
 
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { StorageModule } from './storage/storage.module.js';
+
+import { DocumentsModule } from './documents/document.module.js';
 
 @Module({
   imports: [
@@ -50,6 +53,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     DevicesModule,
     MeetingModule,
     UsersModule,
+    StorageModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
   providers: [
