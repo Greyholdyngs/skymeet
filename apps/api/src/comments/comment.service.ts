@@ -84,7 +84,7 @@ export class CommentsService {
                 _id: parentCommentId,
                 projectId: projectObjectId,
                 taskId: taskObjectId,
-                parentCommentId: null,
+                deletedAt: null,
             });
 
             if (!parentComment) {
@@ -125,66 +125,84 @@ export class CommentsService {
 
         return this.populateAuthor(comment._id);
     }
-    
-    async findDiscussion( projectId: string, userId: string, taskId?: string, page = 1, limit = 20, ) {
+
+    async validateDiscussionTask( projectId: string, taskId: string ): Promise<boolean> {
+        const projectObjectId = this.toObjectId(projectId);
+
+        await this.validateTask(projectObjectId, taskId);
+
+        return true;
+    }
+
+    async findDiscussion( projectId: string, userId: string, taskId?: string, page = 1, limit = 20 ) {
         const projectObjectId = this.toObjectId(projectId);
         const userObjectId = this.toObjectId(userId);
 
         await this.assertProjectAccess(projectObjectId, userId);
+
         const taskObjectId = taskId ? await this.validateTask(projectObjectId, taskId) : null;
-        const historyAccess = await this.projectMembersService.canViewHistoricalChat( projectObjectId, userObjectId,);
+
+        const historyAccess = await this.projectMembersService.canViewHistoricalChat(
+            projectObjectId,
+            userObjectId,
+        );
 
         const discussionFilter: Record<string, unknown> = {
             projectId: projectObjectId,
             taskId: taskObjectId,
-            parentCommentId: null,
         };
 
         if (!historyAccess.allowed && historyAccess.joinedAt) {
             discussionFilter.createdAt = { $gte: historyAccess.joinedAt };
         }
 
-        const [comments, total] = await Promise.all([
-            this.commentModel.find(discussionFilter).populate('authorId', 'firstName lastName userName')
-                .sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).exec(),
+        const rootFilter = { ...discussionFilter, parentCommentId: null, };
 
-            this.commentModel.countDocuments(discussionFilter),
+        const [rootComments, total] = await Promise.all([
+            this.commentModel.find(rootFilter).populate('authorId', 'firstName lastName userName')
+                             .sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).exec(),
+
+            this.commentModel.countDocuments(rootFilter),
         ]);
 
-        const commentIds = comments.map((comment) => comment._id);
+        const allComments: CommentDocument[] = [...rootComments];
+        let parentIds = rootComments.map((comment) => comment._id);
 
-        const repliesFilter: Record<string, unknown> = {
-            projectId: projectObjectId,
-            taskId: taskObjectId,
-            parentCommentId: { $in: commentIds },
-        };
+        while (parentIds.length > 0) {
+            const children = await this.commentModel.find({
+                    ...discussionFilter,
+                    parentCommentId: { $in: parentIds },
+                }).populate('authorId', 'firstName lastName userName').sort({ createdAt: 1, _id: 1 }).exec();
 
-        if (!historyAccess.allowed && historyAccess.joinedAt) {
-            repliesFilter.createdAt = { $gte: historyAccess.joinedAt };
+            allComments.push(...children);
+            parentIds = children.map((comment) => comment._id);
         }
 
-        const replies = commentIds.length  ? await this.commentModel.find(repliesFilter)
-                                                        .populate('authorId', 'firstName lastName userName')
-                                                        .sort({ createdAt: 1, _id: 1 })
-                                                        .exec()
-                                                    : [];
+        const commentMap = new Map<string, Record<string, any>>();
 
-        const repliesByParent = new Map<string, typeof replies>();
-
-        for (const reply of replies) {
-            const parentId = reply.parentCommentId!.toString();
-            const existingReplies = repliesByParent.get(parentId) ?? [];
-
-            existingReplies.push(reply);
-            repliesByParent.set(parentId, existingReplies);
+        for (const comment of allComments) {
+            commentMap.set(comment._id.toString(), {
+                ...comment.toObject(),
+                replies: [],
+            });
         }
 
-        const data = comments.map((comment) => ({
-            ...comment.toObject(),
-            replies: (
-                repliesByParent.get(comment._id.toString()) ?? []
-            ).map((reply) => reply.toObject()),
-        }));
+        const data: Record<string, any>[] = [];
+
+        for (const comment of allComments) {
+            const node = commentMap.get(comment._id.toString())!;
+            const parentId = comment.parentCommentId?.toString();
+
+            if (parentId) {
+                const parent = commentMap.get(parentId);
+
+                if (parent) {
+                    parent.replies.push(node);
+                }
+            } else {
+                data.push(node);
+            }
+        }
 
         return {
             data,
@@ -198,6 +216,7 @@ export class CommentsService {
             },
         };
     }
+
 
     async updateComment( projectId: string, commentId: string, userId: string, dto: UpdateCommentDto ) {
         const projectObjectId = this.toObjectId(projectId);
@@ -258,13 +277,5 @@ export class CommentsService {
         await comment.save();
 
         return this.populateAuthor(comment._id);
-    }
-
-    async validateDiscussionTask( projectId: string, taskId: string ): Promise<boolean> {
-        const projectObjectId = this.toObjectId(projectId);
-
-        await this.validateTask(projectObjectId, taskId);
-
-        return true;
     }
 }

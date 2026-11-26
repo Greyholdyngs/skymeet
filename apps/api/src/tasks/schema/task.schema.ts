@@ -47,6 +47,47 @@ export class TaskReviewEntry {
 
 export const TaskReviewEntrySchema = SchemaFactory.createForClass(TaskReviewEntry);
 
+@Schema({ _id: false })
+export class ChecklistItem {
+    @Prop({ type: String, required: true })
+    id: string;
+
+    @Prop({ type: String, required: true, trim: true, maxlength: 200 })
+    label: string;
+
+    @Prop({ type: Boolean, default: false })
+    completed?: boolean;
+}
+
+export const ChecklistItemSchema = SchemaFactory.createForClass(ChecklistItem);
+
+@Schema({ _id: false })
+export class CustomField {
+    @Prop({ type: String, required: true })
+    id: string;
+
+    @Prop({ type: String, required: true, trim: true, maxlength: 100 })
+    name: string;
+
+    @Prop({
+        type: String,
+        enum: ['text', 'dropdown', 'checklist'],
+        required: true,
+    })
+    type: string;
+
+    @Prop({ type: String, default: '' })
+    value?: string;
+
+    @Prop({ type: [String], default: [] })
+    options?: string[];
+
+    @Prop({ type: [ChecklistItemSchema], default: [] })
+    items?: ChecklistItem[];
+}
+
+export const CustomFieldSchema = SchemaFactory.createForClass(CustomField);
+
 @Schema({ timestamps: true })
 export class Task {
     @Prop({
@@ -115,6 +156,12 @@ export class Task {
         index: true,
     })
     sprintId: Types.ObjectId | null;
+
+    @Prop({
+        type: [CustomFieldSchema],
+        default: [],
+    })
+    customFields: CustomField[];
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);

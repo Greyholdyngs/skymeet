@@ -28,6 +28,18 @@ export class UserPreferences {
         type: Boolean,
         default: true,
     })
+    emailNotifications: boolean;
+
+    @Prop({
+        type: Boolean,
+        default: true,
+    })
+    commentNotifications: boolean;
+
+    @Prop({
+        type: Boolean,
+        default: true,
+    })
     showChatHistoryToNewMembers: boolean;
 }
 

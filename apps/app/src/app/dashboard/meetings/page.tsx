@@ -1,154 +1,241 @@
 "use client";
-import MeetingHeader, { MeetingView } from "@/app/components/dashboard/meeting/MeetingHeader";
+
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import MeetingHeader from "@/app/components/dashboard/meeting/MeetingHeader";
+
 import MeetingActions from "@/app/components/dashboard/meeting/MeetingAction";
 import MeetingList from "@/app/components/dashboard/meeting/MeetingList";
-
 import MeetingFilters from "@/app/components/dashboard/meeting/Meeting-Filter";
-import { useEffect, useState } from "react";
-import { filterMeetings, MeetingFilter, MeetingAction } from "@/app/lib/meeting/meeting-util";
 
-import ScheduleMeetingModal, { ScheduleMeetingData } from "@/app/components/dashboard/meeting/ScheduleMeetingModal";
-import { Meeting } from "@/app/types/meeting";
-import { getMeetings } from "@/app/lib/meeting/meeting-service";
-
-import JoinMeetingModal from "@/app/components/dashboard/meeting/JoinMeetingModal";
+import ScheduleMeetingModal from "@/app/components/dashboard/meeting/ScheduleMeetingModal";
 import MeetingDetailsDrawer from "@/app/components/dashboard/meeting/MeetingDetailsModal";
+import type { ScheduleMeetingData } from "@/app/components/dashboard/meeting/schedule-form/schedule-meeting-types";
+
+import { filterMeetings, type MeetingFilter } from "@/app/lib/meeting/meeting-util";
+import type { Meeting } from "@/app/types/meeting";
+import { getMeetings, createMeeting, respondToMeeting, cancelMeeting } from "@/app/lib/meeting/meeting-service";
+
+import { apiFetch } from "@/app/lib/api";
+import type { Project } from "@/app/types/project";
+import { queryKeys } from "@/app/lib/queries/query-key";
+
+interface CurrentUser {
+    id: string;
+}
 
 const MeetingPage = () => {
-    const [view, setView] = useState<MeetingView>("meetings");
-    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-    const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+    const queryClient = useQueryClient();
 
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
     const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
-
-    const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [filter, setFilter] = useState<MeetingFilter>("all");
+    const [isMeetingActionSubmitting, setIsMeetingActionSubmitting] = useState(false);
 
-    const [isLoading, setIsLoading] = useState(true);
-    const filteredMeetings = filterMeetings( meetings, filter );
+    const [, setRefreshTick] = useState(0);
+
+    const meetingsQuery = useQuery({
+        queryKey: queryKeys.meetings.list(),
+        queryFn: getMeetings,
+    });
+
+    const currentUserQuery = useQuery({
+        queryKey: queryKeys.users.profile(),
+        queryFn: () => apiFetch<CurrentUser>("/auth/me"),
+    });
+
+    const projectsQuery = useQuery({
+        queryKey: queryKeys.projects.lists(),
+        queryFn: () => apiFetch<Project[]>("/projects"),
+    });
+
+    const meetings = meetingsQuery.data ?? [];
+    const projects = projectsQuery.data ?? [];
+    const currentUserId = currentUserQuery.data?.id ?? null;
+
+    const isLoading = meetingsQuery.isLoading;
+    const filteredMeetings = filterMeetings(meetings, filter);
+
+    const createMeetingMutation = useMutation({
+        mutationFn: createMeeting,
+        onSuccess: (newMeeting) => {
+            queryClient.setQueryData<Meeting[]>(
+                queryKeys.meetings.list(),
+                (current) => [...(current ?? []), newMeeting],
+            );
+        },
+    });
+
+    const respondMutation = useMutation({
+        mutationFn: ({ meetingId, response }: {
+            meetingId: string;
+            response: "accepted" | "declined";
+        }) => respondToMeeting(meetingId, response),
+    });
+
+    const cancelMutation = useMutation({
+        mutationFn: cancelMeeting,
+    });
 
     useEffect(() => {
-        async function loadMeetings() {
-            try {
-                const data = await getMeetings();
-                setMeetings(data);
-            } catch (error) {
-                console.error("Failed to load meetings:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        }
+        if (meetings.length === 0) return;
 
-        loadMeetings();
+        const meetingId = new URLSearchParams( window.location.search ).get("meetingId");
+
+        if (!meetingId) return;
+
+        const targetMeeting = meetings.find( (meeting) => meeting.id === meetingId, );
+
+        if (targetMeeting) {
+            setSelectedMeeting(targetMeeting);
+            setIsDetailsDrawerOpen(true);
+        }
+    }, [meetings]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setRefreshTick((current) => current + 1);
+        }, 15000);
+
+        return () => clearInterval(interval);
     }, []);
 
-    const handleInstantMeeting = () => {
-        console.log("Starting instant meeting...");
+    const handleScheduleMeeting = async (data: ScheduleMeetingData) => {
+        try {
+            const startAt = new Date(`${data.date}T${data.time}`);
+
+            if (Number.isNaN(startAt.getTime()) || startAt <= new Date()) {
+                throw new Error("Please select a valid future date and time.");
+            }
+
+            const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+
+            await createMeetingMutation.mutateAsync({
+                scope: data.scope,
+                projectId: data.projectId,
+                title: data.title,
+                startAt: startAt.toISOString(),
+                endAt: endAt.toISOString(),
+                attendeeIds: data.attendeeIds,
+                meetingLink: data.meetingLink,
+            });
+
+            setIsScheduleModalOpen(false);
+        } catch (error) {
+            console.error("Failed to schedule meeting:", error);
+
+            alert( error instanceof Error ? error.message : "Failed to schedule meeting. Please try again.", );
+        }
     };
 
-    const handleScheduleMeeting = (data: ScheduleMeetingData ) => {
-        console.log("Scheduling meeting:", data);
+    const handleMeetingResponse = async ( response: "accepted" | "declined" ) => {
+        if (!selectedMeeting || !currentUserId) return;
 
-        const newMeeting: Meeting = {
-            id: crypto.randomUUID(),
-            title: data.title,
-            date: data.date,
-            time: data.time,
-            status: "scheduled",
-            hostId: "current-user",
-            participants: [],
-        };
+        setIsMeetingActionSubmitting(true);
 
-        setMeetings((current) => [
-            newMeeting,
-            ...current,
-        ]);
+        try {
+            await respondMutation.mutateAsync({
+                meetingId: selectedMeeting.id,
+                response,
+            });
 
-        setIsScheduleModalOpen(false);
+            const updatedMeeting = {
+                ...selectedMeeting,
+                participants: selectedMeeting.participants.map(
+                    (participant) => participant.id === currentUserId ? { ...participant, response } : participant,
+                ),
+            };
+
+            queryClient.setQueryData<Meeting[]>(
+                queryKeys.meetings.list(),
+                (current) => current?.map((meeting) => meeting.id === updatedMeeting.id ? updatedMeeting : meeting,),
+            );
+
+            setSelectedMeeting(updatedMeeting);
+        } catch (error) {
+            alert( error instanceof Error ? error.message : "Failed to update your invitation response.", );
+
+        } finally {
+            setIsMeetingActionSubmitting(false);
+        }
     };
 
-    const handleJoinMeeting = ( meetingCode: string) => {
-        console.log("Joining meeting:", meetingCode);
-        setIsJoinModalOpen(false);
-    };
+    const handleCancelMeeting = async () => {
+        if (!selectedMeeting) return;
 
-    const handleMeetingAction = ( meeting: Meeting, action: MeetingAction ) => {
-        switch (action) {
-            case "details":
-            setSelectedMeeting(meeting);
+        if (!window.confirm("Are you sure you want to cancel this meeting?")) {
+            return;
+        }
 
-            setIsDetailsDrawerOpen(true);
-            break;
+        setIsMeetingActionSubmitting(true);
 
-            case "start":
-            console.log("Starting meeting:", meeting);
-            break;
+        try {
+            await cancelMutation.mutateAsync(selectedMeeting.id);
 
-            case "continue":
-            console.log("Continuing meeting:", meeting);
-            break;
+            const updatedMeeting = {
+                ...selectedMeeting,
+                status: "cancelled" as const,
+            };
 
-            case "join":
-            console.log("Joining meeting:", meeting);
-            break;
+            queryClient.setQueryData<Meeting[]>(
+                queryKeys.meetings.list(),
+                (current) => current?.map((meeting) => meeting.id === updatedMeeting.id ? updatedMeeting : meeting, ),
+            );
+
+            setSelectedMeeting(updatedMeeting);
+        } catch (error) {
+            alert( error instanceof Error ? error.message : "Failed to cancel this meeting.", );
+
+        } finally {
+            setIsMeetingActionSubmitting(false);
         }
     };
 
     return (
         <section className="space-y-8 p-6 md:p-8">
             <div className="space-y-6">
-                <MeetingHeader activeView={view} onViewChange={setView} />
-                {
-                    view === "meetings" ? (
-                    <>
-                        <MeetingActions
-                            onCreateInstant={handleInstantMeeting}
-                            onSchedule={() => setIsScheduleModalOpen(true)}
-                            onJoin={() => setIsJoinModalOpen(true)}
-                        />
-                        <MeetingFilters
-                            activeFilter={filter}
-                            onChange={setFilter}
-                        />
-                        <MeetingList
-                            meetings={filteredMeetings}
-                            onMeetingAction={handleMeetingAction}
-                        />
-                    </>
-                    ) : (
-                    <>
-                        <div className="flex flex-col justify-center items-center min-h-screen">
-                            <h2 className="text-2xl font-semibold text-white">Recordings</h2>
-                            <p className="mt-1 text-sm text-white/40">Recordings from your completed meetings will appear here.</p>
-                        </div>
-                    </>
-                )}
+                <MeetingHeader />
+                <MeetingActions
+                    onSchedule={() => setIsScheduleModalOpen(true)}
+                />
+                <MeetingFilters
+                    activeFilter={filter}
+                    onChange={setFilter}
+                />
+                <MeetingList
+                    meetings={filteredMeetings}
+                    isLoading={isLoading}
+                    userId={currentUserId}
+                    onMeetingAction={(meeting) => {
+                        setSelectedMeeting(meeting);
+                        setIsDetailsDrawerOpen(true);
+                    }}
+                />
             </div>
             <ScheduleMeetingModal
                 open={isScheduleModalOpen}
-                onClose={() =>
-                setIsScheduleModalOpen(false)
-                }
+                onClose={() => setIsScheduleModalOpen(false)}
                 onSchedule={handleScheduleMeeting}
-            />
-            <JoinMeetingModal
-                open={isJoinModalOpen}
-                onClose={() =>
-                setIsJoinModalOpen(false)
-                }
-                onJoin={handleJoinMeeting}
+                projects={projects}
+                currentUserId={currentUserId ?? ""}
             />
             <MeetingDetailsDrawer
                 meeting={selectedMeeting}
                 open={isDetailsDrawerOpen}
+                currentUserId={currentUserId}
+                isSubmitting={isMeetingActionSubmitting}
+                projectName={projects.find((project) => project._id === selectedMeeting?.projectId)?.name}
+                onRespond={handleMeetingResponse}
+                onCancel={handleCancelMeeting}
                 onClose={() => {
                     setIsDetailsDrawerOpen(false);
                     setSelectedMeeting(null);
                 }}
             />
         </section>
-    )
-}
+    );
+};
 
-export default MeetingPage
+export default MeetingPage;
+

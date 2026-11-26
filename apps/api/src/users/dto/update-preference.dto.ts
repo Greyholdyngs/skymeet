@@ -16,5 +16,13 @@ export class UpdatePreferencesDto {
 
     @IsOptional()
     @IsBoolean()
+    emailNotifications?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    commentNotifications?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
     showChatHistoryToNewMembers?: boolean;
 }

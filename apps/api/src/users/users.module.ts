@@ -7,10 +7,13 @@ import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
 import { AccountDeletionService } from './account-deletion.service.js';
+import { UsersDirectoryController } from './user-directory.controller.js';
+import { ProjectMembersModule } from '../project-members/project-members.module.js';
 
 @Module({
     imports: [
         AuthModule,
+        ProjectMembersModule,
         MongooseModule.forFeature([
             {
                 name: User.name,
@@ -18,7 +21,7 @@ import { AccountDeletionService } from './account-deletion.service.js';
             },
         ]),
     ],
-    controllers: [UsersController],
+    controllers: [UsersController, UsersDirectoryController],
     providers: [UsersService, AccountDeletionService],
     exports: [UsersService],
 })

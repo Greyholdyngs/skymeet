@@ -6,18 +6,16 @@ interface StatCardProps {
   icon: LucideIcon;
 }
 
-const StatCard = ({title, value, icon: Icon }: StatCardProps) => {
+const StatCard = ({ title, value, icon: Icon }: StatCardProps) => {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#14141B] p-6 transition hover:border-[#7C3AED]/30">
-        <div className="flex items-center justify-between">
-            <p className="text-sm text-white/50">{title}</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7C3AED]/10 text-[#A78BFA]">            
-                <Icon size={19} />
-            </div>
+    <div className="min-w-0 rounded-2xl border theme-border theme-surface p-4 transition hover:border-[#7C3AED]/30 sm:p-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm theme-text-secondary">{title}</p>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7C3AED]/10 text-[#7C3AED]">
+          <Icon size={19} />
         </div>
-        <h3 className="mt-6 text-3xl font-bold text-white">
-            {value}
-        </h3>
+      </div>
+      <h3 className="mt-4 wrap-break-word text-2xl font-bold theme-text sm:mt-6 sm:text-3xl"> {value} </h3>
     </div>
   );
 };

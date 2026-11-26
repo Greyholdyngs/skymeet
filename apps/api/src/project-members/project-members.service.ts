@@ -51,7 +51,7 @@ export class ProjectMembersService {
     }
 
     async getRoleInProject( projectId: Types.ObjectId, userId: Types.ObjectId ): Promise<ProjectMemberRole | null> {
-        
+
         const project = await this.projectModel.findById(projectId).select('ownerId').exec();
 
         if (!project) {
@@ -105,6 +105,79 @@ export class ProjectMembersService {
         return ids as Types.ObjectId[];
     }
 
+    async getWorkspacePeople(userId: string) {
+        if (!Types.ObjectId.isValid(userId)) {
+            throw new NotFoundException('User not found');
+        }
+
+        const currentUserId = new Types.ObjectId(userId);
+        const projectIds = await this.findAccessibleProjectIds(currentUserId);
+
+        if (!projectIds.length) {
+            return [];
+        }
+
+        const memberships = await this.projectMemberModel.find({
+                projectId: { $in: projectIds },
+                userId: { $ne: currentUserId },
+            }).select('projectId userId role createdAt').lean().exec();
+
+        if (!memberships.length) {
+            return [];
+        }
+
+        const userIds = [...new Map(
+            memberships.map((member) => [
+                member.userId.toString(),
+                member.userId,
+            ]),
+        ).values()];
+
+        const [users, projects] = await Promise.all([
+            this.userModel.find({ _id: { $in: userIds } }).select('_id firstName lastName userName email').lean().exec(),
+
+            this.projectModel.find({ _id: { $in: projectIds } }).select('_id name').lean().exec(),
+        ]);
+
+        const usersById = new Map( users.map((user) => [user._id.toString(), user]), );
+
+        const projectsById = new Map( projects.map((project) => [project._id.toString(), project]), );
+
+        const people = new Map<string, {
+            user: typeof users[number];
+            sharedProjects: Array<{
+                projectId: Types.ObjectId;
+                projectName: string;
+                role: ProjectMemberRole;
+                joinedAt: Date;
+            }>;
+        }>();
+
+        for (const membership of memberships) {
+            const personId = membership.userId.toString();
+            const user = usersById.get(personId);
+            const project = projectsById.get(membership.projectId.toString());
+
+            if (!user || !project) continue;
+
+            if (!people.has(personId)) {
+                people.set(personId, {
+                    user,
+                    sharedProjects: [],
+                });
+            }
+
+            people.get(personId)!.sharedProjects.push({
+                projectId: membership.projectId,
+                projectName: project.name,
+                role: membership.role,
+                joinedAt: membership.createdAt,
+            });
+        }
+
+        return Array.from(people.values());
+    }
+
     async transferOwnership( projectId: Types.ObjectId, currentOwnerId: Types.ObjectId,
                              email: string, ): Promise<{ message: string }> {
 
@@ -149,7 +222,7 @@ export class ProjectMembersService {
                     newOwnerMembership.role = ProjectMemberRole.OWNER;
                     newOwnerMembership.canViewHistoricalChat = true;
                     await newOwnerMembership.save({ session });
-                    
+
                 } else {
                     await this.projectMemberModel.create([{
                         projectId,

@@ -28,6 +28,14 @@ export class MeetingController {
         return this.meetingService.findAll( new Types.ObjectId(req.user.sub) );
     }
 
+    @Get('projects/:projectId/meetings')
+    findByProject( @Param('projectId') projectId: string, @Req() req: AuthRequest, ) {
+        return this.meetingService.findByProject(
+            projectId,
+            new Types.ObjectId(req.user.sub),
+        );
+    }
+
     @Get('meetings/:meetingId')
     findOne( @Param('meetingId') meetingId: string, @Req() req: AuthRequest ) {
 

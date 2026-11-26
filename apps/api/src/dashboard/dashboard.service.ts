@@ -20,17 +20,23 @@ export class DashboardService {
         ]);
 
         const projectIds = projects.map((project) => project._id);
-        const recentActivity = await this.activityService.findRecentForProjects(projectIds, 10);
+        const [recentActivity, recentActivityCount] = await Promise.all([
+            this.activityService.findRecentForProjects(projectIds, 5),
+            this.activityService.countForProjects(projectIds),
+        ]);
 
         return {
             totalProjects: projects.length,
             recentProjects: projects.slice(0, 5),
             myTasksCount: taskData.myTasksCount,
-            
+
             myTasks: taskData.myTasks,
             overdueTasks: taskData.overdueTasks,
             upcomingDeadline: taskData.upcomingDeadline,
-            
+
+            upcomingDeadlinesCount: taskData.upcomingDeadlinesCount,
+            recentActivityCount,
+
             recentActivity,
         };
     }

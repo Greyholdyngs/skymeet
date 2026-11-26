@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
@@ -15,6 +15,7 @@ import { ActivityAction, ActivityEntityType } from '../activity/activity.types.j
 import { Sprint, SprintDocument } from '../sprints/schemas/sprint.schema.js';
 
 import { NotificationService } from '../notifications/notification.service.js';
+import { UpdateCustomFieldDto } from './dto/update-custom-field.dto.js';
 
 @Injectable()
 export class TaskService {
@@ -62,7 +63,7 @@ export class TaskService {
 
         const memberIds = await this.projectMembersService.findMemberIds(projectId);
 
-        const allowedIds = new Set([ 
+        const allowedIds = new Set([
             ownerId.toString(),
             ...memberIds.map((id) => id.toString()),
         ]);
@@ -182,6 +183,38 @@ export class TaskService {
         return updatedTask;
     }
 
+    async returnToProgress(projectId: string, taskId: string, userId: Types.ObjectId) {
+        const { task, ownerId } = await this.getTaskForProject(projectId, taskId, userId);
+
+        const isOwner = ownerId.equals(userId);
+        const isAssignedReviewer = task.reviewerId?.equals(userId) ?? false;
+
+        if (!isOwner && !isAssignedReviewer) {
+            throw new ForbiddenException( 'Only the assigned reviewer or project owner can return this task to progress', );
+        }
+
+        if (task.status !== TaskStatus.TASK_REVIEW) {
+            throw new BadRequestException( 'Only tasks awaiting review can be returned to progress', );
+        }
+
+        const previousStatus = task.status;
+        task.status = TaskStatus.IN_PROGRESS;
+
+        const updatedTask = await task.save();
+
+        await this.logTaskActivity({
+            projectId: task.projectId,
+            actorId: userId,
+            taskId: updatedTask._id,
+            action: ActivityAction.TASK_UPDATED,
+            title: updatedTask.title,
+            fromStatus: previousStatus,
+            toStatus: updatedTask.status,
+        });
+
+        return updatedTask;
+    }
+
     async reviewTask( projectId: string, taskId: string, userId: Types.ObjectId, dto: ReviewTaskDto ) {
         const { task, ownerId } = await this.getTaskForProject( projectId, taskId, userId );
 
@@ -259,7 +292,7 @@ export class TaskService {
             project.ownerId,
             [...assigneeIds, ...reviewerIds],
         );
-        
+
         const task = await this.taskModel.create({
             projectId: projectObjectId,
             sprintId,
@@ -269,6 +302,7 @@ export class TaskService {
             assigneeIds: assigneeIds.map( (id) => new Types.ObjectId(id) ),
             reviewerId: dto.reviewerId ? new Types.ObjectId(dto.reviewerId) : null,
             dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+            customFields: dto.customFields ?? [],
             createdBy: userId,
         });
 
@@ -364,9 +398,13 @@ export class TaskService {
         if (dto.dueDate !== undefined) {
             task.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
         }
+
+        if (dto.customFields !== undefined) {
+            task.customFields = dto.customFields;
+        }
         const updatedTask = await task.save();
 
-        const newlyAssigned = updatedTask.assigneeIds.filter( (assigneeId) => !previousAssigneeIds.has(assigneeId.toString()) 
+        const newlyAssigned = updatedTask.assigneeIds.filter( (assigneeId) => !previousAssigneeIds.has(assigneeId.toString())
                                                                 && !assigneeId.equals(userId));
 
         if (newlyAssigned.length) {
@@ -424,27 +462,153 @@ export class TaskService {
         return { message: 'Task deleted successfully' };
     }
 
+    async updateCustomField( projectId: string, taskId: string, fieldId: string, userId: Types.ObjectId,
+                             dto: UpdateCustomFieldDto ) {
+
+        const { task, ownerId } = await this.getTaskForProject( projectId, taskId, userId );
+        const isOwner = ownerId.equals(userId);
+
+        if ( task.status !== TaskStatus.IN_PROGRESS && task.status !== TaskStatus.TASK_REVIEW ) {
+            throw new ForbiddenException('Custom fields cannot be updated in this task status.',);
+        }
+
+        if (task.status === TaskStatus.IN_PROGRESS) {
+            const isAssignee = task.assigneeIds.some(
+                (id) => id.equals(userId),
+            );
+
+            if (!isOwner && !isAssignee) {
+                throw new ForbiddenException('Only task assignees or the project owner can update custom fields.',);
+            }
+        }
+
+        if (task.status === TaskStatus.TASK_REVIEW) {
+            const isReviewer = task.reviewerId?.equals(userId) ?? false;
+
+            if (!isOwner && !isReviewer) {
+                throw new ForbiddenException('Only the assigned reviewer or project owner can update custom fields during review.',);
+            }
+        }
+
+        const field = task.customFields.find((item) => item.id === fieldId);
+
+        if (!field) {
+            throw new NotFoundException('Custom field not found.');
+        }
+
+        if (field.type === 'text') {
+            throw new BadRequestException('Text fields are read-only.');
+        }
+
+        const filter: Record<string, unknown> = {
+            _id: task._id,
+            projectId: task.projectId,
+            status: task.status,
+        };
+
+        if (!isOwner) {
+            filter.$or = task.status === TaskStatus.IN_PROGRESS ? [{ assigneeIds: userId }] : [{ reviewerId: userId }];
+        }
+
+        let update: Record<string, unknown>;
+        let arrayFilters: Record<string, unknown>[];
+
+        if (field.type === 'dropdown') {
+            if ( dto.value === undefined || dto.itemId !== undefined || dto.completed !== undefined ) {
+                throw new BadRequestException('A valid dropdown value is required.',);
+            }
+
+            if (!(field.options ?? []).includes(dto.value)) {
+                throw new BadRequestException('Invalid dropdown option.');
+            }
+
+            filter.customFields = {
+                $elemMatch: {
+                    id: fieldId,
+                    type: 'dropdown',
+                    options: dto.value,
+                },
+            };
+
+            update = {
+                $set: {'customFields.$[field].value': dto.value,},
+            };
+
+            arrayFilters = [
+                {
+                    'field.id': fieldId,
+                    'field.type': 'dropdown',
+                },
+            ];
+        } else {
+            if ( dto.value !== undefined || !dto.itemId || dto.completed === undefined ) {
+                throw new BadRequestException( 'A valid checklist item ID and completion status are required.', );
+            }
+
+            filter.customFields = {
+                $elemMatch: {
+                    id: fieldId,
+                    type: 'checklist',
+                    items: { $elemMatch: { id: dto.itemId, }, },
+                },
+            };
+
+            update = {
+                $set: { 'customFields.$[field].items.$[item].completed': dto.completed, },
+            };
+
+            arrayFilters = [
+                {
+                    'field.id': fieldId,
+                    'field.type': 'checklist',
+                },
+                {
+                    'item.id': dto.itemId,
+                },
+            ];
+        }
+
+        const updatedTask = await this.taskModel.findOneAndUpdate(
+            filter, update, { new: true, runValidators: true, arrayFilters, }).exec();
+
+        if (!updatedTask) {
+            throw new ConflictException( 'The task or custom field changed. Refresh and try again.', );
+        }
+
+        return {
+            message: "Custom field updated successfully.",
+        };
+    }
+
     async getDashboardData(userId: Types.ObjectId) {
         const now = new Date();
         const activeTasksFilter = { assigneeIds: userId, status: { $ne: TaskStatus.COMPLETED } };
 
-        const [myTasksCount, myTasks, overdueTasks, upcomingTask] =
-            await Promise.all([
-                this.taskModel.countDocuments(activeTasksFilter).exec(),
+        const [ myTasksCount, myTasks, overdueTasks, upcomingDeadlinesCount, upcomingTask ] = await Promise.all([
+            this.taskModel.countDocuments(activeTasksFilter).exec(),
 
-                this.taskModel.find(activeTasksFilter).populate('projectId', 'name').sort({ dueDate: 1, createdAt: -1 }).limit(5).exec(),
-                this.taskModel.countDocuments({ ...activeTasksFilter, dueDate: { $lt: now }, }).exec(),
+            this.taskModel.find(activeTasksFilter).populate('projectId', 'name').sort({ dueDate: 1, createdAt: -1 }).limit(3).exec(),
+            this.taskModel.countDocuments({
+                ...activeTasksFilter,
+                dueDate: { $lt: now },
+            }).exec(),
 
-                this.taskModel.findOne({
-                        ...activeTasksFilter,
-                        dueDate: { $gte: now },
-                    }).sort({ dueDate: 1 }).select('title dueDate projectId priority status').populate('projectId', 'name').exec(),
-            ]);
+            this.taskModel.countDocuments({
+                ...activeTasksFilter,
+                dueDate: { $gte: now },
+            }).exec(),
+
+            this.taskModel.findOne({
+                ...activeTasksFilter,
+                dueDate: { $gte: now },
+            }).sort({ dueDate: 1 }).select('title dueDate projectId priority status').populate('projectId', 'name').exec(),
+        ]);
 
         return {
             myTasksCount,
             myTasks,
             overdueTasks,
+            upcomingDeadlinesCount,
             upcomingDeadline: upcomingTask ? {
                     taskId: upcomingTask._id,
                     title: upcomingTask.title,

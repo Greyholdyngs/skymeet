@@ -31,11 +31,9 @@ export class InvitationsService {
         private readonly projectModel: Model<ProjectDocument>,
     ) {}
 
-    async createInvitation( projectId: string, inviterId: string, input: {
-                                                                            email?: string;
-                                                                            userName?: string;
-                                                                            role: ProjectMemberRole.ADMIN | ProjectMemberRole.TEAM_MEMBER;
-                                                                        } ) {
+    async createInvitation( projectId: string, inviterId: string,
+                            input: {  email?: string; userName?: string;
+                            role: ProjectMemberRole.ADMIN | ProjectMemberRole.TEAM_MEMBER; } ) {
 
         const { email, userName, role } = input;
         const hasEmail = typeof email === 'string' && email.trim().length > 0;
@@ -175,6 +173,200 @@ export class InvitationsService {
             status: invitation.status,
             expiresAt: invitation.expiresAt,
             },
+        };
+    }
+
+    async getPendingInvitation( projectId: string, userId: string, userEmail: string, ) {
+        if ( !Types.ObjectId.isValid(projectId) || !Types.ObjectId.isValid(userId) || !userEmail?.trim()) {
+            throw new BadRequestException('Invalid invitation request.');
+        }
+
+        const normalizedEmail = userEmail.trim().toLowerCase();
+        const projectObjectId = new Types.ObjectId(projectId);
+        const now = new Date();
+
+        const invitation = await this.invitationModel.findOne({
+            projectId: projectObjectId,
+            email: normalizedEmail,
+            status: InvitationStatus.PENDING,
+            expiresAt: { $gt: now },
+        }).exec();
+
+        if (!invitation) {
+            const expiredInvitation = await this.invitationModel.findOne({
+                projectId: projectObjectId,
+                email: normalizedEmail,
+                status: InvitationStatus.PENDING,
+                expiresAt: { $lte: now },
+            }).exec();
+
+            if (expiredInvitation) {
+                await this.invitationModel.updateOne(
+                    {
+                        _id: expiredInvitation._id,
+                        status: InvitationStatus.PENDING,
+                    },
+                    {
+                        $set: {
+                            status: InvitationStatus.EXPIRED,
+                            respondedAt: now,
+                        },
+                    },
+                ).exec();
+
+                throw new BadRequestException('This invitation has expired.');
+            }
+
+            throw new NotFoundException( 'No pending invitation was found for this project.', );
+        }
+
+        const [project, inviter] = await Promise.all([
+            this.projectModel.findById(projectObjectId).select('name').lean().exec(),
+
+            this.userModel.findById(invitation.invitedBy).select('firstName lastName userName').lean().exec(),
+        ]);
+
+        if (!project || !inviter) {
+            throw new NotFoundException('Invitation details could not be found.');
+        }
+
+        return {
+            id: invitation._id.toString(),
+            projectId: projectObjectId.toString(),
+            projectName: project.name,
+            inviter: {
+                firstName: inviter.firstName,
+                lastName: inviter.lastName,
+                userName: inviter.userName,
+            },
+            role: invitation.role,
+            expiresAt: invitation.expiresAt,
+        };
+    }
+
+    async respondToInvitationById( invitationId: string, action: 'accept' | 'decline', userId: string,
+                                    userEmail: string, ) {
+        if ( !Types.ObjectId.isValid(invitationId) || !Types.ObjectId.isValid(userId) || !userEmail?.trim() ) {
+            throw new BadRequestException('Invalid invitation request.');
+        }
+
+        const invitation = await this.invitationModel.findOne({
+            _id: new Types.ObjectId(invitationId),
+            email: userEmail.trim().toLowerCase(),
+            status: InvitationStatus.PENDING,
+        }).exec();
+
+        if (!invitation) {
+            throw new NotFoundException( 'Invitation not found or no longer available.', );
+        }
+
+        const now = new Date();
+
+        if (invitation.expiresAt <= now) {
+            await this.invitationModel.updateOne(
+                {
+                    _id: invitation._id,
+                    status: InvitationStatus.PENDING,
+                },
+                {
+                    $set: {
+                        status: InvitationStatus.EXPIRED,
+                        respondedAt: now,
+                    },
+                },
+            ).exec();
+
+            throw new BadRequestException('This invitation has expired.');
+        }
+
+        if (action === 'accept') {
+            return this.acceptInvitationById(
+                invitation._id.toString(),
+                userId,
+                userEmail,
+            );
+        }
+
+        const declinedInvitation = await this.invitationModel.findOneAndUpdate(
+            {
+                _id: invitation._id,
+                email: userEmail.trim().toLowerCase(),
+                status: InvitationStatus.PENDING,
+                expiresAt: { $gt: now },
+            },
+            {
+                $set: {
+                    status: InvitationStatus.DECLINED,
+                    respondedAt: now,
+                },
+            },
+            { returnDocument: 'after' },
+        ).exec();
+
+        if (!declinedInvitation) {
+            throw new ConflictException( 'This invitation has already been responded to or has expired.', );
+        }
+
+        return {
+            message: 'Invitation declined successfully.',
+            invitation: {
+                id: declinedInvitation._id,
+                status: declinedInvitation.status,
+                respondedAt: declinedInvitation.respondedAt,
+            },
+        };
+    }
+
+    private async acceptInvitationById( invitationId: string, userId: string, userEmail: string, ) {
+        const now = new Date();
+
+        const claimedInvitation = await this.invitationModel.findOneAndUpdate(
+            {
+                _id: new Types.ObjectId(invitationId),
+                email: userEmail.trim().toLowerCase(),
+                status: InvitationStatus.PENDING,
+                expiresAt: { $gt: now },
+            },
+            {
+                $set: {
+                    status: InvitationStatus.ACCEPTED,
+                    respondedAt: now,
+                },
+            },
+            { returnDocument: 'after' },
+        ).exec();
+
+        if (!claimedInvitation) {
+            throw new ConflictException('This invitation has already been used or has expired.',);
+        }
+
+        try {
+            await this.projectMembersService.addMember(
+                claimedInvitation.projectId,
+                new Types.ObjectId(userId),
+                claimedInvitation.role,
+            );
+        } catch (error) {
+            await this.invitationModel.updateOne(
+                {
+                    _id: claimedInvitation._id,
+                    status: InvitationStatus.ACCEPTED,
+                },
+                {
+                    $set: {
+                        status: InvitationStatus.PENDING,
+                        respondedAt: null,
+                    },
+                },
+            ).exec();
+
+            throw error;
+        }
+
+        return {
+            message: 'Invitation accepted successfully',
+            projectId: claimedInvitation.projectId,
+            role: claimedInvitation.role,
         };
     }
 
@@ -343,16 +535,33 @@ export class InvitationsService {
             throw new NotFoundException('Project not found.');
         }
 
-        const [owner, memberRecords, invitations] = await Promise.all([
+        const [owner, memberRecords, , invitations] = await Promise.all([
             this.userModel.findById(project.ownerId).select('firstName lastName userName email').lean().exec(),
-
             this.projectMembersService.findByProject(projectObjectId),
 
-            this.invitationModel.find({
+            await this.invitationModel.updateMany(
+                {
                     projectId: projectObjectId,
                     status: InvitationStatus.PENDING,
-                    expiresAt: { $gt: new Date() },
-                }).select('email role status createdAt expiresAt').sort({ createdAt: -1 }).lean().exec(),
+                    expiresAt: { $lte: new Date() },
+                },
+                {
+                    $set: {
+                        status: InvitationStatus.EXPIRED,
+                    },
+                },
+            ),
+
+            this.invitationModel.find({
+                projectId: projectObjectId,
+                status: {
+                    $in: [
+                        InvitationStatus.PENDING,
+                        InvitationStatus.DECLINED,
+                        InvitationStatus.EXPIRED,
+                    ],
+                },
+            }).select('email role status createdAt expiresAt').sort({ createdAt: -1 }).lean().exec(),
         ]);
 
         if (!owner) {

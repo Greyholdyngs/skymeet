@@ -7,76 +7,77 @@ import InputField from "@/app/components/ui/InputField";
 import { apiFetch } from "@/app/lib/api";
 
 const ForgotPasswordPage = () => {
-    const router = useRouter();
-    const [loading, setLoading] = useState(false)
+  const router = useRouter();
 
-    const [email, setEmail] = useState("");
-    const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError("");
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-        const trimmedEmail = email.trim().toLowerCase();
+    if (loading) return;
+    setError("");
+    const trimmedEmail = email.trim().toLowerCase();
 
-        if (!email.trim()) {
-            setError("Please enter your email address.");
-        return;
-        }
+    if (!trimmedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
 
-        try {
-            setLoading(true);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
 
-            await apiFetch<{ message: string }>("/auth/forgot-password", {
-                method: "POST",
-                body: JSON.stringify({
-                email: trimmedEmail,
-                }),
-            });
+    try {
+      setLoading(true);
 
-            sessionStorage.setItem("skymeet_reset_email", trimmedEmail,);
-            router.push("/verify?purpose=reset");
+      await apiFetch<{ message: string }>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
 
-            } catch (error) {
-                setError(error instanceof Error ? error.message : "Unable to process your request. Please try again.",);
-                
-            } finally {
-                setLoading(false);
-            }
+      sessionStorage.setItem("skymeet_reset_email", trimmedEmail);
+      sessionStorage.setItem( "skymeet_reset_otp_sent_at", Date.now().toString() );
 
-            router.push("/verify?purpose=reset");
-        };
+      router.push("/verify?purpose=reset");
 
-    return (
-        <section className="flex min-h-screen items-center justify-center bg-[#050711] px-4">
-            <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/3 p-8 backdrop-blur-xl">
-                <h1 className="text-3xl font-bold text-white">Forgot password?</h1>
-                <p className="mt-3 text-gray-400">Enter your email and we'll send you a verification code.</p>
-                <form
-                    onSubmit={handleSubmit}
-                    className="mt-8 space-y-6"
-                >
-                    <InputField
-                        label="Email"
-                        type="email"
-                        value={email}
-                        placeholder="you@example.com"
-                        error={error}
-                        onChange={(e) => {
-                        setEmail(e.target.value);
-                        setError("");
-                        }}
-                    />
-                    <button
-                        type="submit"
-                        className="w-full rounded-2xl bg-[#7C3AED] py-3 font-semibold text-white transition hover:bg-[#6D28D9]"
-                    >
-                        Send Verification Code
-                    </button>
-                </form>
-            </div>
-        </section>
-    )
-}
+    } catch (err) {
+      setError( err instanceof Error ? err.message  : "Unable to process your request. Please try again." );
+    } finally {
+      setLoading(false);
+    }
+  };
 
-export default ForgotPasswordPage
+  return (
+    <section className="flex min-h-screen items-center justify-center overflow-x-hidden theme-bg px-3 py-8">
+      <div className="w-full min-w-0 max-w-md rounded-3xl border theme-border theme-surface p-6 backdrop-blur-xl sm:p-8 max-[320px]:rounded-2xl max-[320px]:p-4">
+        <h1 className="text-2xl font-bold theme-text sm:text-3xl">Forgot password? </h1>
+        <p className="mt-3 text-sm leading-relaxed theme-text-secondary sm:text-base">Enter your email and we&apos;ll send you a verification code.</p>
+        <form onSubmit={handleSubmit} className="mt-7 space-y-6">
+            <InputField
+                label="Email"
+                type="email"
+                value={email}
+                placeholder="you@example.com"
+                error={error}
+                onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+                }}
+            />
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-2xl bg-[#7C3AED] py-3 font-semibold text-white transition hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+            {loading ? "Sending..." : "Send Verification Code"}
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+};
+
+export default ForgotPasswordPage;

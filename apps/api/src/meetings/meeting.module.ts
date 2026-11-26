@@ -10,12 +10,15 @@ import { ProjectMembersModule } from '../project-members/project-members.module.
 import { AuthModule } from '../auth/auth.module.js';
 import { NotificationsModule } from '../notifications/notification.module.js';
 
+import { User, UserSchema } from '../auth/schemas/user.schema.js';
+
 @Module({
     imports: [
         AuthModule,
         NotificationsModule,
         MongooseModule.forFeature([
             { name: Meeting.name, schema: MeetingSchema },
+            { name: User.name, schema: UserSchema },
         ]),
         ProjectsModule,
         ProjectMembersModule,

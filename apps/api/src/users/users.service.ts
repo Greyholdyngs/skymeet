@@ -38,6 +38,39 @@ export class UsersService {
         return user;
     }
 
+    async searchUsers(userId: string, query: string, type?: string) {
+        const search = query.trim();
+
+        if (search.length < 2) {
+            return [];
+        }
+
+        const currentUserId = new Types.ObjectId(userId);
+
+        if (type === 'email') {
+            const email = search.toLowerCase();
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return [];
+            }
+
+            return this.userModel.findOne({_id: { $ne: currentUserId },email,})
+                .select('_id firstName lastName userName email').lean().exec().then((user) => user ? [user] : []);
+        }
+
+        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const searchRegex = new RegExp(escapedSearch, 'i');
+
+        return this.userModel.find({
+            _id: { $ne: currentUserId },
+            $or: [
+                { firstName: searchRegex },
+                { lastName: searchRegex },
+                { userName: searchRegex },
+            ],
+        }).select('_id firstName lastName userName').sort({ firstName: 1, lastName: 1 }).limit(20).lean().exec();
+    }
+
     async updateProfile(userId: string, dto: UpdateProfileDto) {
         if (!Types.ObjectId.isValid(userId)) {
             throw new NotFoundException('User not found');
@@ -116,6 +149,14 @@ export class UsersService {
 
         if (dto.inAppNotifications !== undefined) {
             updates['preferences.inAppNotifications'] = dto.inAppNotifications;
+        }
+
+        if (dto.emailNotifications !== undefined) {
+            updates['preferences.emailNotifications'] = dto.emailNotifications;
+        }
+
+        if (dto.commentNotifications !== undefined) {
+            updates['preferences.commentNotifications'] = dto.commentNotifications;
         }
 
         if (dto.showChatHistoryToNewMembers !== undefined) {

@@ -164,20 +164,27 @@ export class ProjectsService {
         }));
     }
 
-    async findAccessibleById( projectId: Types.ObjectId, userId: Types.ObjectId, ): Promise<ProjectDocument | null> {
+    async findAccessibleById( projectId: Types.ObjectId, userId: Types.ObjectId ) {
         const project = await this.projectModel.findById(projectId).exec();
 
         if (!project) {
             return null;
         }
 
-        if (project.ownerId.equals(userId)) {
-            return project;
+        if (!project.ownerId.equals(userId)) {
+            const membership = await this.projectMemberModel.exists({ projectId, userId }).exec();
+
+            if (!membership) {
+                return null;
+            }
         }
 
-        const membership = await this.projectMemberModel.exists({ projectId, userId }).exec();
+        const membersCount = await this.projectMemberModel.countDocuments({ projectId }).exec();
 
-        return membership ? project : null;
+        return {
+            ...project.toObject(),
+            membersCount,
+        };
     }
 
     async update( projectId: Types.ObjectId,  actorId: Types.ObjectId, updates: {
@@ -230,7 +237,7 @@ export class ProjectsService {
 
         return updatedProject;
     }
-   
+
     async delete( projectId: Types.ObjectId, ownerId: Types.ObjectId, ): Promise<ProjectDocument | null> {
         const session = await this.connection.startSession();
 
@@ -272,11 +279,11 @@ export class ProjectsService {
                 await this.notificationModel.deleteMany({ $or: notificationFilters }).session(session).exec();
                 await this.taskModel.deleteMany({ projectId }).session(session).exec();
                 await this.sprintModel.deleteMany({ projectId }).session(session).exec();
-                
+
                 await this.invitationModel.deleteMany({ projectId }).session(session).exec();
                 await this.commentModel.deleteMany({ projectId }).session(session).exec();
                 await this.meetingModel.deleteMany({ projectId }).session(session).exec();
-                
+
                 await this.activityModel.deleteMany({ projectId }).session(session).exec();
                 await this.projectMemberModel.deleteMany({ projectId }).session(session).exec();
 
