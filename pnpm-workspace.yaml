@@ -4,4 +4,4 @@ packages:
 allowBuilds:
   bcrypt: false
   unrs-resolver: true
-verifyDepsBeforeRun: false
+verifyDepsBeforeRun: warn
