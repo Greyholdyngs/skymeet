@@ -1,0 +1,99 @@
+.heroBackground {
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(124, 58, 237, 0.13), transparent 55%),
+        radial-gradient(ellipse at 90% 45%, rgba(0, 161, 204, 0.06), transparent 45%);
+}
+
+.heroSpotlight {
+    --spotlight-x: 50%;
+    --spotlight-y: 50%;
+    --rotate-x: 0deg;
+    --rotate-y: 0deg;
+
+    background:
+        radial-gradient(
+        500px circle at var(--spotlight-x) var(--spotlight-y),
+        rgba(139, 92, 246, 0.09),
+        transparent 65%
+        );
+}
+
+.heroPreview {
+    transform:
+        rotateX(var(--rotate-x, 0deg))
+        rotateY(var(--rotate-y, 0deg));
+    transform-style: preserve-3d;
+    animation: previewFloat 7s ease-in-out infinite;
+    transition: transform 300ms ease-out, border-color 300ms ease;
+    will-change: transform;
+}
+
+.heroPreview:hover {
+    border-color: rgba(167, 139, 250, 0.3);
+}
+
+:global(.hero-notification) {
+    animation: notificationLoop 8s ease-in-out infinite;
+}
+
+:global(.hero-pointer) {
+    animation: pointerLoop 8s ease-in-out infinite;
+    transform-origin: top left;
+}
+
+@keyframes previewFloat {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -9px; }
+}
+
+@keyframes notificationLoop {
+    0%, 45% {
+        opacity: 0;
+        transform: translate(14px, 10px) scale(0.92);
+    }
+    52%, 76% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    84%, 100% {
+        opacity: 0;
+        transform: translate(10px, 8px) scale(0.95);
+    }
+}
+
+@keyframes pointerLoop {
+    0%, 8% {
+        opacity: 0;
+        transform: translate(35px, 22px) scale(0.8);
+    }
+    15%, 30% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(0, 0) scale(0.75);
+    }
+    37%, 43% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    48%, 100% {
+        opacity: 0;
+        transform: translate(28px, 18px) scale(0.85);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .heroPreview,
+    :global(.hero-notification),
+    :global(.hero-pointer) {
+        animation: none;
+        transition: none;
+    }
+
+    :global(.hero-notification),
+    :global(.hero-pointer) {
+        opacity: 1;
+        transform: none;
+    }
+}

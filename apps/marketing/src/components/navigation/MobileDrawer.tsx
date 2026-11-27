@@ -9,74 +9,58 @@ interface MobileDrawerProps {
 }
 
 const MobileDrawer = ({ open, onClose }: MobileDrawerProps) => {
+  const linkStyle = "block w-full rounded-xl px-3 py-3 text-sm min-[360px]:text-base text-zinc-300 transition-colors hover:bg-white/5 hover:text-white";
 
-    const listStye = `rounded-xl py-1 text-lg text-zinc-300 transition-colors hover:bg-white/5 hover:text-white`
   return (
     <div
-      className={`fixed min-h-screen  inset-0 z-40 md:hidden ${ open ? "pointer-events-auto" : "pointer-events-none"}`}
+      className={`fixed inset-0 z-40 min-h-dvh md:hidden ${ open ? "pointer-events-auto" : "pointer-events-none" }`}
+      aria-hidden={!open}
     >
-    <div
+      <div
         onClick={onClose}
         className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
-          open ? "opacity-100" : "opacity-0"
-        }`}
+          open ? "opacity-100" : "opacity-0" }`}
       />
       <div
-        className={`absolute right-0 top-0 h-full w-[80%] max-w-sm border-l border-white/10 bg-[#0F0F14] px-6 pb-8 pt-24 shadow-2xl transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+        id="mobile-navigation"
+        className={`absolute right-0 top-0 flex h-dvh w-[85%] max-w-sm flex-col border-l border-white/10 bg-[#0F0F14] px-3 pb-5 pt-20 shadow-2xl transition-transform duration-300 ease-out min-[360px]:px-6 min-[360px]:pb-8 min-[360px]:pt-24 ${
+                    open ? "translate-x-0" : "translate-x-full" }`}
       >
-        <div className="flex h-full flex-col">
-          <nav className="flex flex-col space-y-3">
-            <Link
-              href="#features"
-              onClick={onClose}
-              className={listStye}
-            >
-              Features
-            </Link>
-            <Link
-              href="#pricing"
-              onClick={onClose}
-              className={listStye}
-            >
-              Pricing
-            </Link>
-            <Link
-              href="#download"
-              onClick={onClose}
-              className={listStye}
-            >
-              Download
-            </Link>
-
-            <Link
-              href="#about"
-              onClick={onClose}
-              className={listStye}
-            >
-              About
-            </Link>
-          </nav>
-          <div className="mt-auto flex flex-col gap-3">
-            <Button
-              href="/login"
-              buttonType="secondary"
-              className="w-full"
-              onClick={onClose}
-            >
-              Login
-            </Button>
-
-            <Button
-              href="/register"
-              buttonType="primary"
-              className="w-full"
-              onClick={onClose}
-            >
-              Sign Up
-            </Button>
-          </div>
+        <nav className="flex flex-col gap-2">
+          <Link
+            href="#features"
+            onClick={onClose}
+            className={linkStyle}
+            tabIndex={open ? 0 : -1}
+          >
+            Features
+          </Link>
+          <Link
+            href="#about"
+            onClick={onClose}
+            className={linkStyle}
+            tabIndex={open ? 0 : -1}
+          >
+            About
+          </Link>
+        </nav>
+        <div className="mt-auto flex flex-col gap-3">
+          <Button
+            href="/login"
+            buttonType="secondary"
+            className="w-full px-3! py-3! text-sm"
+            onClick={onClose}
+          >
+            Login
+          </Button>
+          <Button
+            href="/signup"
+            buttonType="primary"
+            className="w-full px-3! py-3! text-sm"
+            onClick={onClose}
+          >
+            Get Started
+          </Button>
         </div>
       </div>
     </div>

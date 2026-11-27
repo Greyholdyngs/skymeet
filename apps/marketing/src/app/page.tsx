@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 
 import Hero from "@/components/landing/Hero";
 import Feature from "@/components/landing/Feature";
-import Pricing from "@/components/landing/Pricing";
+//import Pricing from "@/components/landing/Pricing";
 import Download from "@/components/landing/Download";
 import About from "@/components/landing/About";
 import CTA from "@/components/landing/CTA";
@@ -22,7 +22,7 @@ export default function Home() {
       <main className={` space-y-20`}>
         <Hero />
         <Feature />
-        <Pricing />
+        {/*<Pricing />*/}
         <Download />
         <About />
         <CTA />

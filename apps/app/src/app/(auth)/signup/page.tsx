@@ -1,15 +1,15 @@
 "use client"
 import InputField from "../../components/ui/InputField";
 import { useState, useEffect } from "react";
-
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
 
+import AuthShowcase from "@/app/components/auth/AuthShowcase";
 import { SignupFormData } from "@/app/types/auth";
 import Link from "next/link";
 
 import PasswordInput from "@/app/components/ui/PasswordInput";
 import { apiFetch } from "@/app/lib/api";
+import styles from "@/app/components/auth/AuthShowcase.module.css";
 
 const SignUpPage = () => {
   const router = useRouter();
@@ -75,8 +75,6 @@ const SignUpPage = () => {
         password: "",
         confirmPassword: "",
     });
-
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -148,14 +146,14 @@ const SignUpPage = () => {
   }
 
   return (
-    <section className={`flex flex-col justify-center items-center min-h-screen bg-theme-bg relative`}>
-      <div className="absolute -left-32 -top-32 h-100 w-100 animate-pulse rounded-full bg-[#7C3AED]/10 blur-3xl" />
+    <AuthShowcase>
+      <section className={`relative flex w-full min-w-0 flex-col items-center justify-center py-6 ${styles.previewStage}`}>
       <div
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`overflow-auto lg:w-[30vw] md:w-[40vw] w-[80vw]  border-2 hide-scrollbar
+        className={`overflow-auto w-full max-w-md  border-2 hide-scrollbar
                     flex flex-col items-center md:space-y-7 space-y-2.5 py-5 px-4 rounded-2xl hide-scrollbar transition-all duration-1000
-                    ease-[cubic-bezier(0.22,1,0.36,1)] bg-theme-surface border-theme-border backdrop-blur-2xl shadow-2xl shadow-[#5B21B6]/10
+                    ease-[cubic-bezier(0.22,1,0.36,1)] theme-surface theme-border backdrop-blur-2xl shadow-2xl shadow-[#5B21B6]/10
                     ${isExpanded ? "max-h-[70vh]" : "max-h-28"} ${ entered ? "translate-x-0 opacity-100" : "translate-x-[-120vw] opacity-0"}
                         `}>
         <button
@@ -294,8 +292,8 @@ const SignUpPage = () => {
                 <Link href="/login" className="text-theme-text-secondary hover:underline hover:text-[#7C3AED] transform duration-300 font-semibold">Login</Link>
             </div>
       </div>
-      <div className="absolute right-0 bottom-0 h-80 w-80 animate-pulse rounded-full bg-[#7C3AED]/10 blur-3xl" />
-    </section>
+      </section>
+    </AuthShowcase>
   )
 }
 
