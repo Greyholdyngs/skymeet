@@ -46,7 +46,7 @@ const MobileDrawer = ({ open, onClose }: MobileDrawerProps) => {
         </nav>
         <div className="mt-auto flex flex-col gap-3">
           <Button
-            href="/login"
+            href="https://app.skymeet.greyholdyngs.com/login"
             buttonType="secondary"
             className="w-full px-3! py-3! text-sm"
             onClick={onClose}
@@ -54,7 +54,7 @@ const MobileDrawer = ({ open, onClose }: MobileDrawerProps) => {
             Login
           </Button>
           <Button
-            href="/signup"
+            href="https://app.skymeet.greyholdyngs.com/signup"
             buttonType="primary"
             className="w-full px-3! py-3! text-sm"
             onClick={onClose}
